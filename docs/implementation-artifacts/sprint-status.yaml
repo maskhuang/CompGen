@@ -42,7 +42,7 @@ development_status:
   epic-1: in-progress
   1-1-project-skeleton-init: done
   1-2-config-schema-validation: done
-  1-3-error-code-system: backlog
+  1-3-error-code-system: done
   1-4-logging-audit-foundation: backlog
   1-5-base-adapter-framework: backlog
   1-6-unified-runner-retry: backlog

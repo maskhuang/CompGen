@@ -1,8 +1,9 @@
 # Test Automation Summary - CompGene
 
 **日期:** 2026-01-21
-**目标:** CompGene 配置验证模块
+**目标:** CompGene 错误码系统 + 配置验证模块
 **模式:** Standalone (独立分析模式)
+**Story:** 1.3 Error Code System
 
 ---
 
@@ -230,9 +231,79 @@ Test Summary:
 
 ---
 
+## Story 1.3 错误码系统测试扩展
+
+### 新增测试 (2026-01-21)
+
+**扩展测试文件:** `workflow/lib/test_errors.py`
+
+| 测试类 | 测试数 | 描述 |
+|--------|--------|------|
+| TestEdgeCases | 9 | 边界情况测试 |
+| TestIntegration | 4 | 集成测试 |
+
+**新增边界情况测试 (P2):**
+- `test_exception_chaining_preserves_cause` - 异常链传播
+- `test_error_code_json_serialization` - JSON 序列化
+- `test_error_code_in_dict_key` - 字典键兼容性
+- `test_compgene_error_with_unicode_message` - Unicode 消息处理
+- `test_compgene_error_with_multiline_details` - 多行详情
+- `test_all_error_codes_have_docstring` - 文档完整性
+- `test_exit_codes_cover_all_unix_ranges` - Unix 退出码覆盖
+- `test_get_recovery_with_string_matching_enum_value` - 字符串匹配
+
+**新增集成测试 (P1-P2):**
+- `test_configuration_error_integrates_with_error_formatting` - ConfigurationError 格式化
+- `test_error_can_be_raised_and_caught_by_base_class` - 异常继承链
+- `test_multiple_errors_have_distinct_exit_codes` - 退出码区分
+- `test_recovery_suggestions_are_actionable` - 恢复建议可操作性
+
+### 测试统计更新
+
+| 测试文件 | 原测试数 | 新增 | 总计 |
+|----------|----------|------|------|
+| `workflow/lib/test_errors.py` | 40 | 12 | 52 |
+| `tests/test_config_validation.py` | 15 | 0 | 15 |
+| `tests/test_common_helpers.py` | 23 | 0 | 23 |
+| `tests/test_validate_config_cli.py` | 10 | 0 | 10 |
+| **总计** | **88** | **12** | **100** |
+
+### 验证结果
+
+```
+============================================================
+COMPGENE ERROR SYSTEM - EXPANDED TEST VALIDATION
+============================================================
+
+[Test Group 1] Edge Cases
+  [PASS] Exception chaining preserves cause
+  [PASS] ErrorCode JSON serialization
+  [PASS] ErrorCode as dict key
+  [PASS] Unicode message handling
+  [PASS] Multiline details handling
+  [PASS] Exit codes cover Unix ranges
+
+[Test Group 2] Integration Tests
+  [PASS] ConfigurationError formatting
+  [PASS] Distinct exit codes per error type
+  [PASS] Recovery suggestions are actionable
+
+[Test Group 3] Serialization Tests
+  [PASS] CompGeneError pickle roundtrip
+  [PASS] ConfigurationError pickle roundtrip
+
+============================================================
+RESULTS: 11 passed, 0 failed
+============================================================
+```
+
+---
+
 ## 知识库参考
 
 - Test level selection framework (Unit vs Integration)
 - Priority classification (P1-P2)
 - Factory pattern for test data
 - Fixture architecture with auto-cleanup
+- Given-When-Then test format
+- Edge case identification patterns
