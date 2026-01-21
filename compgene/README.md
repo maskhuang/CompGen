@@ -83,6 +83,36 @@ compgene/
 
 See `config/config.yaml` for available options.
 
+### Configuration Validation
+
+The pipeline validates your configuration at startup using JSON Schema. If validation fails, you'll see a clear error message explaining what needs to be fixed.
+
+Required configuration:
+- `species` - At least one species with id, name, annotation, and genome paths
+- `output_dir` - Output directory path
+
+### Command-Line Overrides
+
+You can override configuration values from the command line:
+
+```bash
+# Override output directory
+snakemake --snakefile workflow/Snakefile --config output_dir=/custom/path
+
+# Override logging level
+snakemake --snakefile workflow/Snakefile --config "logging={level: DEBUG}"
+
+# Override resource defaults
+snakemake --snakefile workflow/Snakefile --config "resources={default: {threads: 16}}"
+
+# Multiple overrides
+snakemake --snakefile workflow/Snakefile \
+  --config output_dir=/custom/path \
+  --config "logging={level: DEBUG}"
+```
+
+Command-line values take precedence over values in config.yaml.
+
 ## License
 
 MIT License

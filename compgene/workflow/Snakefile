@@ -17,6 +17,9 @@ validate(config, schema="../schemas/config.schema.yaml")
 
 # Include rule modules
 include: "rules/common.smk"
+
+# Perform additional business rule validation
+validate_config_business_rules()
 include: "rules/standardize.smk"
 include: "rules/qc.smk"
 include: "rules/orthology.smk"
