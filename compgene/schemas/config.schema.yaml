@@ -1,0 +1,34 @@
+# CompGene Configuration Schema
+# =============================
+# Placeholder schema for Story 1.1
+# Full validation schema will be implemented in Story 1.2
+
+$schema: "http://json-schema.org/draft-07/schema#"
+
+description: "CompGene configuration schema"
+
+type: object
+
+properties:
+  species:
+    type: array
+    description: "List of species to analyze"
+
+  output_dir:
+    type: string
+    description: "Output directory path"
+
+  tools:
+    type: object
+    description: "Tool-specific configuration"
+
+  resources:
+    type: object
+    description: "Resource limits"
+
+  logging:
+    type: object
+    description: "Logging configuration"
+
+# Required fields will be enforced in Story 1.2
+required: []

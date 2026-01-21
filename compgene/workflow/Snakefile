@@ -1,0 +1,36 @@
+"""
+CompGene - Comparative Genomics Pipeline
+
+Main Snakefile entry point for the CompGene workflow.
+"""
+
+from snakemake.utils import min_version, validate
+
+# Require Snakemake 9.0+
+min_version("9.0")
+
+# Load configuration (path relative to Snakefile location)
+configfile: "../config/config.yaml"
+
+# Validate configuration against schema
+validate(config, schema="../schemas/config.schema.yaml")
+
+# Include rule modules
+include: "rules/common.smk"
+include: "rules/standardize.smk"
+include: "rules/qc.smk"
+include: "rules/orthology.smk"
+include: "rules/annotation.smk"
+include: "rules/validation.smk"
+include: "rules/matrices.smk"
+include: "rules/expression.smk"
+include: "rules/reporting.smk"
+include: "rules/ingest.smk"
+
+
+rule all:
+    """
+    Default target: generate the final summary report.
+    """
+    input:
+        "results/reports/summary.html"

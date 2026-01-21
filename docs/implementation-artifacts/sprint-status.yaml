@@ -1,0 +1,111 @@
+# generated: 2026-01-20
+# project: CompGene
+# tracking_system: file-system
+# story_location: docs/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-01-20
+project: CompGene
+tracking_system: file-system
+story_location: docs/implementation-artifacts
+
+development_status:
+  # Epic 1: 项目基础设施、配置与可观测性
+  epic-1: in-progress
+  1-1-project-skeleton-init: done
+  1-2-config-schema-validation: backlog
+  1-3-error-code-system: backlog
+  1-4-logging-audit-foundation: backlog
+  1-5-base-adapter-framework: backlog
+  1-6-unified-runner-retry: backlog
+  1-7-checkpoint-resume-dryrun: backlog
+  epic-1-retrospective: optional
+
+  # Epic 2: 数据标准化与质控
+  epic-2: backlog
+  2-1-gff-fasta-parser: backlog
+  2-2-local-data-standardization: backlog
+  2-3-ncbi-annotation-download: backlog
+  2-4-busco-qc: backlog
+  epic-2-retrospective: optional
+
+  # Epic 3: 直系同源分析
+  epic-3: backlog
+  3-1-orthofinder-adapter: backlog
+  3-2-orthogroups-table: backlog
+  3-3-species-gene-trees: backlog
+  3-4-copy-number-stats: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4: 功能注释
+  epic-4: backlog
+  4-1-eggnog-mapper-adapter: backlog
+  4-2-go-kegg-cog-extraction: backlog
+  4-3-orthogroup-annotation-summary: backlog
+  epic-4-retrospective: optional
+
+  # Epic 5: 缺失核验
+  epic-5: backlog
+  5-1-liftoff-adapter: backlog
+  5-2-true-vs-false-absence: backlog
+  5-3-lifted-annotation-file: backlog
+  epic-5-retrospective: optional
+
+  # Epic 6A: 存在/缺失矩阵（基础）
+  epic-6a: backlog
+  6a-1-presence-absence-matrix: backlog
+  6a-2-multi-species-comparison: backlog
+  6a-3-gene-family-stats: backlog
+  epic-6a-retrospective: optional
+
+  # Epic 6B: 存在/缺失分析（增强）
+  epic-6b: backlog
+  6b-1-species-specific-ogs: backlog
+  6b-2-liftoff-confidence-integration: backlog
+  6b-3-comparison-summary-report: backlog
+  epic-6b-retrospective: optional
+
+  # Epic 7: 表达分析
+  epic-7: backlog
+  7-1-deseq2-adapter: backlog
+  7-2-normalized-matrix-output: backlog
+  7-3-de-results-output: backlog
+  7-4-orthogroup-expression-link: backlog
+  7-5-cross-species-expression: backlog
+  epic-7-retrospective: optional
+
+  # Epic 8: 报告生成
+  epic-8: backlog
+  8-1-sqlite-audit-summary: backlog
+  8-2-tsv-data-output: backlog
+  8-3-markdown-report: backlog
+  8-4-html-report: backlog
+  epic-8-retrospective: optional

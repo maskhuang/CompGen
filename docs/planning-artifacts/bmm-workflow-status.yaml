@@ -1,0 +1,41 @@
+# BMM Workflow Status - CompGene
+# Generated: 2026-01-20
+# Track: BMad Method (Greenfield)
+
+# STATUS DEFINITIONS:
+# ==================
+# Initial Status (before completion):
+#   - required: Must be completed to progress
+#   - optional: Can be completed but not required
+#   - recommended: Strongly suggested but not required
+#   - conditional: Required only if certain conditions met (e.g., if_has_ui)
+#
+# Completion Status:
+#   - {file-path}: File created/found (e.g., "docs/planning-artifacts/prd.md")
+#   - skipped: Optional/conditional workflow that was skipped
+
+generated: "2026-01-20"
+project: "CompGene"
+project_type: "software"
+selected_track: "method"
+field_type: "greenfield"
+workflow_path: "method-greenfield.yaml"
+
+workflow_status:
+  # Phase 1: Analysis (Optional)
+  brainstorm-project: skipped
+  research: skipped
+  product-brief: "docs/planning-artifacts/product-brief-CompGene-2026-01-20.md"
+
+  # Phase 2: Planning
+  prd: "docs/planning-artifacts/prd.md"
+  create-ux-design: conditional  # if_has_ui
+
+  # Phase 3: Solutioning
+  create-architecture: "docs/planning-artifacts/architecture.md"
+  create-epics-and-stories: "docs/planning-artifacts/epics.md"
+  test-design: optional
+  implementation-readiness: "docs/planning-artifacts/implementation-readiness-report-2026-01-20.md"
+
+  # Phase 4: Implementation
+  sprint-planning: "docs/implementation-artifacts/sprint-status.yaml"
