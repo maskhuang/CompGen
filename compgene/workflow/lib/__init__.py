@@ -9,6 +9,7 @@ Modules:
     checksum: File and directory checksum computation
     logging: Dual-format logging (text + JSON Lines)
     audit: Rule execution audit metadata collection
+    runner: Unified adapter execution with retry and timeout handling
 """
 
 # Error handling (Story 1.3)
@@ -56,6 +57,12 @@ from workflow.lib.audit import (
     create_and_write_audit,
 )
 
+# Runner (Story 1.6)
+from workflow.lib.runner import (
+    AdapterRunner,
+    RetryConfig,
+)
+
 __all__ = [
     # errors
     "ErrorCode",
@@ -87,4 +94,7 @@ __all__ = [
     "collect_run_metadata",
     "write_run_json",
     "create_and_write_audit",
+    # runner
+    "AdapterRunner",
+    "RetryConfig",
 ]

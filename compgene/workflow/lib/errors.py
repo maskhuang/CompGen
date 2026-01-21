@@ -48,6 +48,9 @@ class ErrorCode(str, Enum):
     E_DISK_FULL = "E_DISK_FULL"
     """Disk space exhausted. Free up disk space before retrying."""
 
+    E_OUTPUT_MISSING = "E_OUTPUT_MISSING"
+    """Expected output file not found. Check tool execution logs."""
+
     E_NONZERO_EXIT = "E_NONZERO_EXIT"
     """Tool returned non-zero exit code. Check logs for details."""
 
@@ -65,6 +68,7 @@ ERROR_RECOVERY: dict[ErrorCode, tuple[bool, str]] = {
     ErrorCode.E_OOM: (False, "减少 threads 或增加可用内存"),
     ErrorCode.E_NET_RATE_LIMIT: (True, "等待后自动重试"),
     ErrorCode.E_DISK_FULL: (False, "清理磁盘空间后重试"),
+    ErrorCode.E_OUTPUT_MISSING: (False, "检查工具执行日志确认输出生成"),
     ErrorCode.E_NONZERO_EXIT: (False, "查看日志了解详细错误"),
 }
 
@@ -98,6 +102,7 @@ EXIT_CODES: dict[ErrorCode, int] = {
     ErrorCode.E_OOM: 5,              # Resource error
     ErrorCode.E_DISK_FULL: 5,        # Resource error
     ErrorCode.E_NET_RATE_LIMIT: 6,   # Network error
+    ErrorCode.E_OUTPUT_MISSING: 7,   # Output error
     ErrorCode.E_NONZERO_EXIT: 1,     # General error
 }
 

@@ -45,7 +45,7 @@ development_status:
   1-3-error-code-system: done
   1-4-logging-audit-foundation: done
   1-5-base-adapter-framework: done
-  1-6-unified-runner-retry: backlog
+  1-6-unified-runner-retry: done
   1-7-checkpoint-resume-dryrun: backlog
   epic-1-retrospective: optional
 

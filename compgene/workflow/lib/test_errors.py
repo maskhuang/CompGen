@@ -47,6 +47,7 @@ class TestErrorCodeEnum:
             "E_OOM",
             "E_NET_RATE_LIMIT",
             "E_DISK_FULL",
+            "E_OUTPUT_MISSING",
             "E_NONZERO_EXIT",
         ]
 
@@ -54,7 +55,7 @@ class TestErrorCodeEnum:
         actual_codes = [code.name for code in ErrorCode]
 
         # THEN: All required codes should be present
-        assert len(actual_codes) == 9
+        assert len(actual_codes) == 10
         for code in required_codes:
             assert code in actual_codes
 
@@ -294,11 +295,11 @@ class TestExitCodeMapping:
             assert code in EXIT_CODES, f"Missing exit code for {code}"
 
     def test_exit_code_values_in_range(self):
-        """[P1] Exit codes should be in valid range (1-6)."""
+        """[P1] Exit codes should be in valid range (1-7)."""
         # GIVEN: All exit codes
         for code, exit_code in EXIT_CODES.items():
-            # WHEN/THEN: Should be 1-6 (0 is success, not an error)
-            assert 1 <= exit_code <= 6, f"Invalid exit code {exit_code} for {code}"
+            # WHEN/THEN: Should be 1-7 (0 is success, not an error)
+            assert 1 <= exit_code <= 7, f"Invalid exit code {exit_code} for {code}"
 
     def test_input_errors_return_code_3(self):
         """[P1] Input errors should return exit code 3."""
