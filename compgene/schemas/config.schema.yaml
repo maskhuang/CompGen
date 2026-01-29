@@ -1,0 +1,194 @@
+# CompGene Configuration Schema
+# =============================
+# JSON Schema draft-07 for validating config/config.yaml
+# Implemented in Story 1.2
+
+$schema: "http://json-schema.org/draft-07/schema#"
+
+title: "CompGene Configuration"
+description: "Configuration schema for CompGene comparative genomics pipeline"
+
+type: object
+
+required:
+  - species
+  - output_dir
+
+properties:
+  # Species definitions - REQUIRED
+  species:
+    type: array
+    description: "List of species to analyze with their data sources"
+    minItems: 1
+    items:
+      type: object
+      required:
+        - id
+        - name
+        - annotation
+        - genome
+      properties:
+        id:
+          type: string
+          pattern: "^[a-z][a-z0-9_]*$"
+          description: "Species short code for file naming (lowercase, starts with letter)"
+          examples:
+            - "mmur"
+            - "lcat"
+            - "species1"
+        name:
+          type: string
+          minLength: 1
+          description: "Species full name"
+          examples:
+            - "Mus musculus"
+            - "Homo sapiens"
+        annotation:
+          type: string
+          minLength: 1
+          description: "Path to GFF3/GTF file or NCBI accession"
+          examples:
+            - "path/to/species.gff3"
+            - "GCF_000001405.40"
+        genome:
+          type: string
+          minLength: 1
+          description: "Path to genome FASTA file"
+          examples:
+            - "path/to/genome.fa"
+      additionalProperties: false
+
+  # Output directory - REQUIRED
+  output_dir:
+    type: string
+    description: "Output directory path for results"
+    default: "results"
+    minLength: 1
+
+  # Tool-specific configuration - OPTIONAL
+  tools:
+    type: object
+    description: "Configuration for external tools"
+    properties:
+      orthofinder:
+        type: object
+        description: "OrthoFinder settings"
+        properties:
+          threads:
+            type: integer
+            minimum: 1
+            default: 8
+            description: "Number of threads for OrthoFinder"
+        additionalProperties: false
+
+      eggnog:
+        type: object
+        description: "eggNOG-mapper settings"
+        properties:
+          database:
+            type: string
+            default: "eukaryota"
+            description: "eggNOG database to use"
+            examples:
+              - "eukaryota"
+              - "vertebrates"
+              - "bacteria"
+        additionalProperties: false
+
+      busco:
+        type: object
+        description: "BUSCO settings"
+        properties:
+          lineage:
+            type: string
+            default: "eukaryota_odb10"
+            description: "BUSCO lineage dataset"
+            examples:
+              - "eukaryota_odb10"
+              - "vertebrata_odb10"
+              - "mammalia_odb10"
+        additionalProperties: false
+
+      liftoff:
+        type: object
+        description: "Liftoff settings"
+        properties:
+          min_coverage:
+            type: number
+            minimum: 0
+            maximum: 1
+            default: 0.5
+            description: "Minimum coverage threshold for Liftoff mapping"
+          min_identity:
+            type: number
+            minimum: 0
+            maximum: 1
+            default: 0.5
+            description: "Minimum identity threshold for Liftoff mapping"
+        additionalProperties: false
+
+      deseq2:
+        type: object
+        description: "DESeq2 settings"
+        properties:
+          alpha:
+            type: number
+            minimum: 0
+            maximum: 1
+            default: 0.05
+            description: "Significance threshold for differential expression"
+        additionalProperties: false
+
+    additionalProperties: false
+
+  # Resource limits - OPTIONAL
+  resources:
+    type: object
+    description: "Resource limits for rules"
+    properties:
+      default:
+        type: object
+        description: "Default resource limits for all rules"
+        properties:
+          threads:
+            type: integer
+            minimum: 1
+            default: 4
+            description: "Default number of threads"
+          memory_mb:
+            type: integer
+            minimum: 1000
+            default: 8000
+            description: "Default memory allocation in MB"
+        additionalProperties: false
+    additionalProperties:
+      type: object
+      description: "Per-rule resource overrides"
+      properties:
+        threads:
+          type: integer
+          minimum: 1
+          description: "Number of threads for this rule"
+        memory_mb:
+          type: integer
+          minimum: 1000
+          description: "Memory allocation in MB for this rule"
+      additionalProperties: false
+
+  # Logging configuration - OPTIONAL
+  logging:
+    type: object
+    description: "Logging configuration"
+    properties:
+      level:
+        type: string
+        enum:
+          - "DEBUG"
+          - "INFO"
+          - "WARNING"
+          - "ERROR"
+        default: "INFO"
+        description: "Log level for pipeline execution"
+    additionalProperties: false
+
+additionalProperties: false

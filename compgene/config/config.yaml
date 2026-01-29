@@ -1,0 +1,116 @@
+# CompGene Configuration
+# ======================
+# Main configuration file for the CompGene comparative genomics pipeline.
+# Copy this file and modify according to your analysis needs.
+#
+# REQUIRED fields are marked with [REQUIRED]
+# OPTIONAL fields have default values if not specified
+#
+# Command-line overrides:
+#   snakemake --config output_dir=/custom/path
+#   snakemake --config "resources={default: {threads: 16}}"
+#   snakemake --config "logging={level: DEBUG}"
+
+# =============================================================================
+# SPECIES DEFINITIONS [REQUIRED]
+# =============================================================================
+# List of species to analyze. At least one species is required.
+#
+# Each species must have:
+#   - id: Short code for file naming (lowercase, letters/numbers/underscores)
+#   - name: Full species name for reports
+#   - annotation: Path to GFF3/GTF file OR NCBI accession (e.g., GCF_000001405.40)
+#   - genome: Path to genome FASTA file
+#
+# Example with 2 species:
+species:
+  - id: "species1"
+    name: "Species One (Example)"
+    annotation: "path/to/species1.gff3"  # Local GFF3/GTF file
+    genome: "path/to/species1.fa"        # Local genome FASTA
+
+  - id: "species2"
+    name: "Species Two (Example)"
+    annotation: "path/to/species2.gff3"
+    genome: "path/to/species2.fa"
+
+# Example with NCBI accession (auto-download):
+# species:
+#   - id: "hsapiens"
+#     name: "Homo sapiens"
+#     annotation: "GCF_000001405.40"  # NCBI RefSeq accession
+#     genome: "path/to/GRCh38.fa"
+
+# =============================================================================
+# OUTPUT DIRECTORY [REQUIRED]
+# =============================================================================
+# Directory where all results will be written.
+# Relative paths are resolved from the project root.
+output_dir: "results"
+
+# =============================================================================
+# TOOL CONFIGURATION [OPTIONAL]
+# =============================================================================
+# Settings for external tools. All have sensible defaults.
+tools:
+  # OrthoFinder - ortholog inference
+  orthofinder:
+    threads: 8  # Number of threads for OrthoFinder (default: 8)
+
+  # eggNOG-mapper - functional annotation
+  eggnog:
+    database: "eukaryota"  # Database: eukaryota, vertebrates, bacteria (default: eukaryota)
+
+  # BUSCO - assembly/annotation completeness assessment
+  busco:
+    lineage: "eukaryota_odb10"  # Lineage dataset (default: eukaryota_odb10)
+    # Options: eukaryota_odb10, vertebrata_odb10, mammalia_odb10, etc.
+
+  # Liftoff - annotation mapping for absence verification
+  liftoff:
+    min_coverage: 0.5   # Minimum coverage threshold (default: 0.5)
+    min_identity: 0.5   # Minimum identity threshold (default: 0.5)
+
+  # DESeq2 - differential expression analysis
+  deseq2:
+    alpha: 0.05  # Significance threshold (default: 0.05)
+
+# =============================================================================
+# RESOURCE LIMITS [OPTIONAL]
+# =============================================================================
+# Resource allocation for pipeline rules.
+#
+# Priority order:
+#   1. Rule-specific settings (e.g., resources.orthology_infer.threads)
+#   2. Default settings (resources.default.threads)
+#   3. Built-in defaults in the code
+#
+resources:
+  # Default resources for all rules
+  default:
+    threads: 4       # Default thread count (minimum: 1)
+    memory_mb: 8000  # Default memory in MB (minimum: 1000)
+
+  # Per-rule overrides (rule names from workflow/rules/*.smk)
+  orthology_infer:
+    threads: 8
+    memory_mb: 16000
+
+  qc_busco:
+    threads: 4
+    memory_mb: 8000
+
+  annotation_eggnog:
+    threads: 4
+    memory_mb: 8000
+
+# =============================================================================
+# LOGGING CONFIGURATION [OPTIONAL]
+# =============================================================================
+# Controls verbosity of pipeline output.
+logging:
+  level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR (default: INFO)
+  # DEBUG   - Detailed debugging information
+  # INFO    - General operational messages
+  # WARNING - Warnings about potential issues
+  # ERROR   - Error messages only

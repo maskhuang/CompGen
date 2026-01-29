@@ -1,0 +1,26 @@
+# Invalid configuration for testing
+# Multiple validation errors present
+
+# Missing required 'species' field - removed entirely
+
+# output_dir is present but empty
+output_dir: ""
+
+# Invalid tool configuration
+tools:
+  orthofinder:
+    threads: 0  # Invalid: must be >= 1
+  busco:
+    lineage: 123  # Invalid: must be string
+  deseq2:
+    alpha: 1.5  # Invalid: must be 0-1
+
+# Invalid resources
+resources:
+  default:
+    threads: -1    # Invalid: must be >= 1
+    memory_mb: 500  # Invalid: must be >= 1000
+
+# Invalid logging level
+logging:
+  level: "TRACE"  # Invalid: not in enum

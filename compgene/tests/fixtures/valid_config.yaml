@@ -1,0 +1,36 @@
+# Valid configuration for testing
+# All required fields present with valid values
+
+species:
+  - id: "mmur"
+    name: "Microcebus murinus"
+    annotation: "tests/fixtures/mmur.gff3"
+    genome: "tests/fixtures/mmur.fa"
+
+  - id: "lcat"
+    name: "Lemur catta"
+    annotation: "tests/fixtures/lcat.gff3"
+    genome: "tests/fixtures/lcat.fa"
+
+output_dir: "results"
+
+tools:
+  orthofinder:
+    threads: 4
+  eggnog:
+    database: "eukaryota"
+  busco:
+    lineage: "eukaryota_odb10"
+  liftoff:
+    min_coverage: 0.5
+    min_identity: 0.5
+  deseq2:
+    alpha: 0.05
+
+resources:
+  default:
+    threads: 2
+    memory_mb: 4000
+
+logging:
+  level: "INFO"

@@ -1,0 +1,31 @@
+# Local execution profile
+# =======================
+# Resource configuration for local machine execution
+
+# Maximum number of concurrent jobs
+jobs: 4
+
+# Use conda environments for tool isolation
+use-conda: true
+
+# Rerun incomplete jobs on restart
+rerun-incomplete: true
+
+# Keep going on errors (process other independent jobs)
+keep-going: true
+
+# Default resources for all rules (can be overridden per-rule)
+default-resources:
+  - threads=4
+  - mem_mb=8000
+  - runtime=60  # minutes
+
+# Conda frontend (mamba is faster)
+conda-frontend: "mamba"
+
+# Local cores available
+cores: 8
+
+# Temporary directory for intermediate files
+# (uses system temp if not specified)
+# tmpdir: "/tmp/compgene"
