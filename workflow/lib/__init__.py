@@ -10,6 +10,8 @@ Modules:
     logging: Dual-format logging (text + JSON Lines)
     audit: Rule execution audit metadata collection
     runner: Unified adapter execution with retry and timeout handling
+    gff: GFF3/GTF annotation file parsing (Story 2.1)
+    fasta: FASTA sequence file parsing (Story 2.1)
 """
 
 # Error handling (Story 1.3)
@@ -59,6 +61,11 @@ from workflow.lib.audit import (
 
 # Runner (Story 1.6) - Import directly from workflow.lib.runner to avoid circular import
 # Usage: from workflow.lib.runner import AdapterRunner, RetryConfig
+
+# GFF/FASTA parsers (Story 2.1) - Import directly from modules to avoid loading
+# entire parser when not needed
+# Usage: from workflow.lib.gff import parse_gff3, parse_gtf, build_gene_hierarchy
+# Usage: from workflow.lib.fasta import parse_fasta, write_fasta, get_sequence_stats
 
 __all__ = [
     # errors

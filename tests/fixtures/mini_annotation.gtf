@@ -1,0 +1,6 @@
+chr1	NCBI	gene	1000	3000	.	+	.	gene_id "gene001"; gene_name "BRCA1";
+chr1	NCBI	transcript	1000	3000	.	+	.	gene_id "gene001"; transcript_id "transcript001"; gene_name "BRCA1";
+chr1	NCBI	exon	1000	1200	.	+	.	gene_id "gene001"; transcript_id "transcript001"; exon_number "1";
+chr1	NCBI	exon	1500	1800	.	+	.	gene_id "gene001"; transcript_id "transcript001"; exon_number "2";
+chr1	NCBI	CDS	1050	1200	.	+	0	gene_id "gene001"; transcript_id "transcript001";
+chr1	NCBI	CDS	1500	1800	.	+	0	gene_id "gene001"; transcript_id "transcript001";

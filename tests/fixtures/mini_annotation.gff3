@@ -1,0 +1,21 @@
+##gff-version 3
+##sequence-region chr1 1 10000
+chr1	NCBI	gene	1000	3000	.	+	.	ID=gene001;Name=BRCA1
+chr1	NCBI	mRNA	1000	3000	.	+	.	ID=transcript001;Parent=gene001;Name=BRCA1-201
+chr1	NCBI	exon	1000	1200	.	+	.	ID=exon001;Parent=transcript001
+chr1	NCBI	exon	1500	1800	.	+	.	ID=exon002;Parent=transcript001
+chr1	NCBI	exon	2500	3000	.	+	.	ID=exon003;Parent=transcript001
+chr1	NCBI	CDS	1050	1200	.	+	0	ID=cds001;Parent=transcript001
+chr1	NCBI	CDS	1500	1800	.	+	0	ID=cds002;Parent=transcript001
+chr1	NCBI	CDS	2500	2800	.	+	0	ID=cds003;Parent=transcript001
+chr1	NCBI	mRNA	1000	2900	.	+	.	ID=transcript002;Parent=gene001;Name=BRCA1-202
+chr1	NCBI	exon	1000	1200	.	+	.	ID=exon004;Parent=transcript002
+chr1	NCBI	exon	2500	2900	.	+	.	ID=exon005;Parent=transcript002
+chr1	NCBI	CDS	1050	1200	.	+	0	ID=cds004;Parent=transcript002
+chr1	NCBI	CDS	2500	2700	.	+	0	ID=cds005;Parent=transcript002
+chr1	NCBI	gene	5000	7000	.	-	.	ID=gene002;Name=TP53
+chr1	NCBI	mRNA	5000	7000	.	-	.	ID=transcript003;Parent=gene002;Name=TP53-201
+chr1	NCBI	exon	5000	5500	.	-	.	ID=exon006;Parent=transcript003
+chr1	NCBI	exon	6500	7000	.	-	.	ID=exon007;Parent=transcript003
+chr1	NCBI	CDS	5100	5500	.	-	0	ID=cds006;Parent=transcript003
+chr1	NCBI	CDS	6500	6900	.	-	2	ID=cds007;Parent=transcript003
