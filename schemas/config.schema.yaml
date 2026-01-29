@@ -1,0 +1,90 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+description: "CompGene configuration schema - validates pipeline configuration"
+type: object
+required:
+  - project
+  - species
+additionalProperties: false
+
+properties:
+  project:
+    type: object
+    description: "Project metadata and output settings"
+    required:
+      - name
+      - output_dir
+    additionalProperties: false
+    properties:
+      name:
+        type: string
+        description: "Project name (alphanumeric and underscores, must start with letter)"
+        pattern: "^[a-zA-Z][a-zA-Z0-9_]*$"
+        minLength: 1
+        maxLength: 64
+      output_dir:
+        type: string
+        description: "Output directory path for results"
+        minLength: 1
+
+  species:
+    type: array
+    description: "List of species to analyze"
+    items:
+      type: object
+      required:
+        - name
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          description: "Species identifier (alphanumeric and underscores)"
+          pattern: "^[a-zA-Z][a-zA-Z0-9_]*$"
+          minLength: 1
+          maxLength: 64
+        assembly:
+          type: string
+          description: "Path to genome assembly FASTA or NCBI accession"
+        annotation:
+          type: string
+          description: "Path to annotation GFF3/GTF or NCBI accession"
+
+  analysis:
+    type: object
+    description: "Analysis module settings"
+    additionalProperties: false
+    properties:
+      orthology:
+        type: object
+        additionalProperties: false
+        properties:
+          method:
+            type: string
+            description: "Orthology inference method"
+            enum:
+              - "orthofinder"
+            default: "orthofinder"
+      expression:
+        type: object
+        additionalProperties: false
+        properties:
+          enabled:
+            type: boolean
+            description: "Enable RNA-seq expression analysis"
+            default: false
+
+  resources:
+    type: object
+    description: "Compute resource limits"
+    additionalProperties: false
+    properties:
+      threads:
+        type: integer
+        description: "Maximum number of threads to use"
+        minimum: 1
+        maximum: 128
+        default: 8
+      memory:
+        type: string
+        description: "Maximum memory allocation (e.g., 16G, 32G, 64G)"
+        pattern: "^[1-9][0-9]*[GMK]$"
+        default: "16G"

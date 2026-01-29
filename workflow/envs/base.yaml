@@ -1,0 +1,8 @@
+name: compgene-base
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python>=3.11
+  - snakemake>=9.14
+  - pyyaml>=6.0

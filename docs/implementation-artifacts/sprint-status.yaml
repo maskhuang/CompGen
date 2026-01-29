@@ -1,0 +1,26 @@
+# Sprint Status Tracking
+# Generated: 2026-01-28
+# Last Updated: 2026-01-28
+
+sprint:
+  name: "Epic 1 - Core Pipeline Foundation"
+  start_date: "2026-01-28"
+
+epics:
+  epic-1:
+    name: "Core Pipeline Foundation"
+    status: "in-progress"
+    stories:
+      1-1-project-skeleton-init:
+        status: "done"
+        completed: "2026-01-28"
+      1-2-config-schema-validation:
+        status: "done"
+        completed: "2026-01-28"
+        code_review: "passed"
+      1-3-data-source-abstraction:
+        status: "backlog"
+      1-4-species-configuration:
+        status: "backlog"
+      1-5-basic-cli:
+        status: "backlog"

@@ -1,0 +1,18 @@
+project:
+  name: "test_analysis"
+  output_dir: "./results"
+
+species:
+  - name: "Microcebus_murinus"
+    assembly: "/path/to/assembly.fa"
+    annotation: "/path/to/annotation.gff"
+
+analysis:
+  orthology:
+    method: "orthofinder"
+  expression:
+    enabled: false
+
+resources:
+  threads: 4
+  memory: "8G"

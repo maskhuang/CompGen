@@ -1,0 +1,47 @@
+# CompGene Configuration File
+# ============================
+# This file defines the analysis parameters for the CompGene pipeline.
+# All paths can be absolute or relative to the workflow directory.
+
+# Project Settings
+# ----------------
+# name: Project identifier (letters, numbers, underscores; must start with letter)
+# output_dir: Directory where all results will be written
+project:
+  name: "compgene_analysis"
+  output_dir: "./results"
+
+# Species List
+# ------------
+# Define each species to analyze. Each species requires:
+#   - name: Species identifier (letters, numbers, underscores)
+#   - assembly: (optional) Path to genome FASTA or NCBI accession
+#   - annotation: (optional) Path to annotation GFF3/GTF or NCBI accession
+#
+# Example with multiple species:
+# species:
+#   - name: "Microcebus_murinus"
+#     assembly: "/path/to/Mmur_assembly.fa"
+#     annotation: "/path/to/Mmur_annotation.gff3"
+#   - name: "Homo_sapiens"
+#     assembly: "GCF_000001405.40"  # NCBI accession
+#     annotation: "GCF_000001405.40"
+species: []
+
+# Analysis Settings
+# -----------------
+# orthology.method: Orthology inference tool (currently only "orthofinder")
+# expression.enabled: Whether to run RNA-seq expression analysis
+analysis:
+  orthology:
+    method: "orthofinder"
+  expression:
+    enabled: false
+
+# Resource Limits
+# ---------------
+# threads: Maximum number of CPU threads (1-128)
+# memory: Maximum memory allocation (e.g., "8G", "16G", "32G")
+resources:
+  threads: 8
+  memory: "16G"
