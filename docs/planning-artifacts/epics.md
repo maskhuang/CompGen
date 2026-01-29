@@ -533,6 +533,32 @@ So that **后续分析可以使用一致的输入格式**。
 
 ---
 
+### Story 2.2b: Biopython 工具封装
+
+As a **计算生物学研究员**,
+I want **使用 Biopython 处理复杂序列操作**,
+So that **我可以处理非标准遗传密码、多格式 ID 解析和生成审计摘要**。
+
+**Acceptance Criteria:**
+
+**Given** 需要翻译线粒体或其他非标准遗传密码序列
+**When** 调用翻译函数
+**Then** 使用 Biopython 的 CodonTable 支持 NCBI 定义的所有遗传密码表
+
+**Given** 来自不同来源的 FASTA 文件（UniProt、NCBI、OrthoFinder 输出）
+**When** 提取序列 ID
+**Then** 正确解析各种 ID 格式（sp|P12345|NAME、gi|123|ref|NP_001|、gene_id|transcript_id）
+
+**Given** 完成数据标准化后
+**When** 生成审计摘要
+**Then** 输出 JSON 格式统计信息（序列数、总长度、GC 含量、N 含量、长度分布）
+
+**Given** Biopython 未安装
+**When** 调用 bio_utils 模块
+**Then** 返回 E_TOOL_NOT_FOUND 并提供安装建议
+
+---
+
 ### Story 2.3: NCBI 注释下载
 
 As a **计算生物学研究员**,
@@ -711,6 +737,28 @@ So that **我可以了解基因家族的整体功能**。
 
 用户可以区分"真缺失"与"注释假缺失"，获得可信的缺失候选清单。
 
+**核心工作流：**
+```
+OrthoFinder (Epic 3)                    Liftoff 核验                     最终判定
+────────────────────                   ─────────────                    ──────────
+presence_absence.tsv     ┌──────────────────────────┐
+  Species B 缺少 OG  ───►│ Liftoff: A → B           │
+                         │ 参考注释 → 目标装配       │
+                         └───────────┬──────────────┘
+                                     │
+                      ┌──────────────┴──────────────┐
+                      ▼                             ▼
+              高置信映射成功                    映射失败/低质
+              coverage ≥90%                   coverage <50%
+              identity ≥85%                   或无映射
+                      │                             │
+                      ▼                             ▼
+              注释假缺失                       真缺失候选
+              (false_absence)                (true_absence)
+              → 补全注释                      → 高可信度标记
+              → confidence: low              → confidence: high
+```
+
 ### Story 5.1: Liftoff Adapter
 
 As a **计算生物学研究员**,
@@ -724,6 +772,16 @@ So that **我可以验证基因缺失是真实的还是注释遗漏**。
 **Then** 调用 Liftoff 将参考注释映射到目标 assembly
 **And** 输出到 results/validation/liftoff/{source}_to_{target}/
 
+**Given** OrthoFinder 输出的缺失基因列表
+**When** 确定需要核验的基因
+**Then** 仅对缺失候选执行 Liftoff（而非全基因组）
+**And** 生成 liftoff_targets.txt 记录待核验基因
+
+**Given** Liftoff 执行完成
+**When** 解析输出
+**Then** 提取映射统计：coverage, sequence_identity, copy_number
+**And** 生成 liftoff_stats.tsv
+
 ---
 
 ### Story 5.2: 真缺失 vs 假缺失识别
@@ -734,16 +792,34 @@ So that **我的比较分析结果更可靠**。
 
 **Acceptance Criteria:**
 
-**Given** Liftoff 映射结果
-**When** 分析映射状态
-**Then** 将基因分类为：
-- 成功映射（注释存在）
-- 部分映射（可能的假缺失）
-- 无法映射（真缺失候选）
+**Given** Liftoff 映射结果和统计
+**When** 应用判定规则
+**Then** 根据 coverage 和 identity 分类基因：
+
+| liftoff_status | coverage | identity | verdict |
+|----------------|----------|----------|---------|
+| mapped | ≥90% | ≥85% | `false_absence` (注释假缺失) |
+| partial | 50-90% | any | `likely_false` (可能假缺失) |
+| partial | <50% | any | `likely_true` (可能真缺失) |
+| unmapped | - | - | `true_absence` (真缺失候选) |
 
 **Given** 分类完成
 **When** 生成候选清单
-**Then** 输出 true_absence_candidates.tsv：gene_id, source_species, target_species, confidence
+**Then** 输出 true_absence_candidates.tsv：
+```
+gene_id, source_species, target_species, liftoff_status, coverage, identity, verdict
+```
+
+**Given** 可配置的阈值参数
+**When** 用户需要调整判定严格程度
+**Then** 支持通过 config.yaml 覆盖默认阈值：
+```yaml
+liftoff:
+  thresholds:
+    high_confidence_coverage: 0.90
+    high_confidence_identity: 0.85
+    partial_coverage_min: 0.50
+```
 
 ---
 
@@ -755,13 +831,19 @@ So that **我可以使用更完整的注释进行下游分析**。
 
 **Acceptance Criteria:**
 
-**Given** Liftoff 成功映射的基因
+**Given** Liftoff 成功映射的基因（verdict = false_absence）
 **When** 生成补全注释
 **Then** 输出 lifted_annotation.gff3：包含原始注释 + Liftoff 补全的基因
+**And** 补全基因添加属性 `source=liftoff;liftoff_coverage=X;liftoff_identity=Y`
 
 **Given** 补全注释与原始注释有冲突
 **When** 合并时
 **Then** 优先保留原始注释，Liftoff 结果作为补充
+**And** 冲突记录到 annotation_conflicts.tsv
+
+**Given** 需要追溯补全来源
+**When** 查询补全基因
+**Then** 可通过 GFF3 属性追溯：原参考物种、映射质量、原始基因 ID
 
 ---
 
@@ -841,11 +923,45 @@ As a **计算生物学研究员**,
 I want **将 Liftoff 核验结果整合到比较矩阵中**,
 So that **我可以知道哪些缺失是可信的**。
 
+**数据流：**
+```
+Epic 5 输出                              Epic 6B 整合
+───────────                             ────────────
+true_absence_candidates.tsv  ──┐
+  (verdict: true_absence/      │
+   false_absence/likely_*)     ├──► presence_absence_verified.tsv
+                               │      (含 confidence 列)
+presence_absence.tsv ──────────┘
+  (0/1 矩阵)
+```
+
 **Acceptance Criteria:**
 
-**Given** presence/absence 矩阵和 Liftoff 真缺失候选
-**When** 整合可信度
-**Then** 更新矩阵添加 confidence 列：high（真缺失）, low（可能假缺失）, na（未验证）
+**Given** presence/absence 矩阵（Epic 6A）和 true_absence_candidates.tsv（Epic 5）
+**When** 整合可信度标记
+**Then** 生成 presence_absence_verified.tsv：
+```
+orthogroup_id, species_a, species_b, ..., species_a_conf, species_b_conf, ...
+OG0000001,     1,         0,              na,            high,           ...
+OG0000002,     1,         1,              na,            na,             ...
+OG0000003,     0,         1,              low,           na,             ...
+```
+
+**Given** Liftoff verdict 值
+**When** 映射到 confidence
+**Then** 应用映射规则：
+
+| Liftoff verdict | confidence | 含义 |
+|-----------------|------------|------|
+| `true_absence` | `high` | 真缺失，高可信度 |
+| `likely_true` | `medium` | 可能真缺失 |
+| `likely_false` | `low` | 可能假缺失（注释遗漏） |
+| `false_absence` | `very_low` | 确认假缺失（已被 Liftoff 补全） |
+| 未核验 | `na` | 未执行 Liftoff 核验 |
+
+**Given** 用户查询特定缺失的可信度
+**When** 需要追溯详情
+**Then** 可通过 orthogroup_id + species 关联回 true_absence_candidates.tsv 获取 coverage/identity
 
 ---
 

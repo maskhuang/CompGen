@@ -52,7 +52,8 @@ development_status:
   # Epic 2: 数据标准化与质控
   epic-2: in-progress
   2-1-gff-fasta-parser: done
-  2-2-local-data-standardization: backlog
+  2-2-local-data-standardization: done
+  2-2b-biopython-utils: done
   2-3-ncbi-annotation-download: backlog
   2-4-busco-qc: backlog
   epic-2-retrospective: optional
