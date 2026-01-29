@@ -16,6 +16,11 @@ from workflow.lib.audit import (
     collect_run_metadata,
     write_run_json,
     create_and_write_audit,
+    get_checkpoint_path,
+    mark_rule_complete,
+    is_rule_complete,
+    get_rule_completion_time,
+    clear_checkpoint,
 )
 
 
@@ -443,3 +448,228 @@ class TestCreateAndWriteAudit:
         assert len(result) == 2
         assert isinstance(result[0], RunMetadata)
         assert isinstance(result[1], Path)
+
+
+# =============================================================================
+# Test Checkpoint Functions (Story 1.7)
+# =============================================================================
+
+class TestGetCheckpointPath:
+    """Tests for get_checkpoint_path function."""
+
+    def test_generates_correct_path(self, tmp_path: Path) -> None:
+        """[P1] Given rule and wildcards, then correct .done path returned."""
+        # Given
+        rule = "orthofinder"
+        wildcards = {"species_set": "lemur"}
+
+        # When
+        path = get_checkpoint_path(rule, wildcards, tmp_path)
+
+        # Then
+        assert path.suffix == ".done"
+        assert "orthofinder" in str(path)
+        assert "species_set=lemur" in str(path)
+
+    def test_uses_default_for_empty_wildcards(self, tmp_path: Path) -> None:
+        """[P2] Given empty wildcards, then 'default' in filename."""
+        # Given
+        rule = "test_rule"
+        wildcards: dict[str, str] = {}
+
+        # When
+        path = get_checkpoint_path(rule, wildcards, tmp_path)
+
+        # Then
+        assert "default.done" in str(path)
+
+    def test_sorts_wildcards_deterministically(self, tmp_path: Path) -> None:
+        """[P2] Given multiple wildcards, then sorted alphabetically in path."""
+        # Given
+        rule = "test"
+        wildcards = {"z_last": "1", "a_first": "2", "m_middle": "3"}
+
+        # When
+        path = get_checkpoint_path(rule, wildcards, tmp_path)
+
+        # Then
+        path_str = str(path)
+        # Should be a_first before m_middle before z_last
+        assert path_str.index("a_first") < path_str.index("m_middle")
+        assert path_str.index("m_middle") < path_str.index("z_last")
+
+
+class TestMarkRuleComplete:
+    """Tests for mark_rule_complete function."""
+
+    def test_creates_checkpoint_file(self, tmp_path: Path) -> None:
+        """[P1] Given rule info, when marked complete, then .done file created."""
+        # Given
+        rule = "test_rule"
+        wildcards = {"species": "mmur"}
+
+        # When
+        path = mark_rule_complete(rule, wildcards, tmp_path)
+
+        # Then
+        assert path.exists()
+        assert path.suffix == ".done"
+
+    def test_writes_timestamp(self, tmp_path: Path) -> None:
+        """[P1] Given call, when marked complete, then timestamp in file."""
+        # Given
+        rule = "test"
+        wildcards = {"key": "value"}
+
+        # When
+        path = mark_rule_complete(rule, wildcards, tmp_path)
+
+        # Then
+        content = path.read_text().strip()
+        assert "T" in content  # ISO format contains T
+        assert "+" in content or "Z" in content  # Timezone info
+
+    def test_uses_provided_timestamp(self, tmp_path: Path) -> None:
+        """[P2] Given explicit timestamp, when marked, then that timestamp used."""
+        # Given
+        rule = "test"
+        wildcards = {}
+        timestamp = "2026-01-28T12:00:00+00:00"
+
+        # When
+        path = mark_rule_complete(rule, wildcards, tmp_path, timestamp=timestamp)
+
+        # Then
+        content = path.read_text().strip()
+        assert content == timestamp
+
+    def test_creates_parent_directories(self, tmp_path: Path) -> None:
+        """[P2] Given nested path, when marked, then directories created."""
+        # Given
+        rule = "nested_rule"
+        wildcards = {"key": "value"}
+
+        # When
+        path = mark_rule_complete(rule, wildcards, tmp_path / "deep" / "path")
+
+        # Then
+        assert path.exists()
+
+
+class TestIsRuleComplete:
+    """Tests for is_rule_complete function."""
+
+    def test_returns_true_when_complete(self, tmp_path: Path) -> None:
+        """[P1] Given checkpoint exists, when checked, then True returned."""
+        # Given
+        rule = "test"
+        wildcards = {"key": "value"}
+        mark_rule_complete(rule, wildcards, tmp_path)
+
+        # When
+        result = is_rule_complete(rule, wildcards, tmp_path)
+
+        # Then
+        assert result is True
+
+    def test_returns_false_when_not_complete(self, tmp_path: Path) -> None:
+        """[P1] Given no checkpoint, when checked, then False returned."""
+        # Given
+        rule = "test"
+        wildcards = {"key": "value"}
+        # Not marked complete
+
+        # When
+        result = is_rule_complete(rule, wildcards, tmp_path)
+
+        # Then
+        assert result is False
+
+    def test_distinguishes_different_wildcards(self, tmp_path: Path) -> None:
+        """[P2] Given same rule different wildcards, then separate completion status."""
+        # Given
+        rule = "test"
+        mark_rule_complete(rule, {"species": "mmur"}, tmp_path)
+        # Not marked for lcat
+
+        # When/Then
+        assert is_rule_complete(rule, {"species": "mmur"}, tmp_path) is True
+        assert is_rule_complete(rule, {"species": "lcat"}, tmp_path) is False
+
+
+class TestGetRuleCompletionTime:
+    """Tests for get_rule_completion_time function."""
+
+    def test_returns_timestamp_when_complete(self, tmp_path: Path) -> None:
+        """[P1] Given checkpoint exists, when called, then timestamp returned."""
+        # Given
+        rule = "test"
+        wildcards = {"key": "value"}
+        timestamp = "2026-01-28T12:00:00+00:00"
+        mark_rule_complete(rule, wildcards, tmp_path, timestamp=timestamp)
+
+        # When
+        result = get_rule_completion_time(rule, wildcards, tmp_path)
+
+        # Then
+        assert result == timestamp
+
+    def test_returns_none_when_not_complete(self, tmp_path: Path) -> None:
+        """[P1] Given no checkpoint, when called, then None returned."""
+        # Given
+        rule = "test"
+        wildcards = {"key": "value"}
+        # Not marked complete
+
+        # When
+        result = get_rule_completion_time(rule, wildcards, tmp_path)
+
+        # Then
+        assert result is None
+
+
+class TestClearCheckpoint:
+    """Tests for clear_checkpoint function."""
+
+    def test_removes_checkpoint_file(self, tmp_path: Path) -> None:
+        """[P1] Given checkpoint exists, when cleared, then file removed."""
+        # Given
+        rule = "test"
+        wildcards = {"key": "value"}
+        path = mark_rule_complete(rule, wildcards, tmp_path)
+        assert path.exists()
+
+        # When
+        result = clear_checkpoint(rule, wildcards, tmp_path)
+
+        # Then
+        assert result is True
+        assert not path.exists()
+
+    def test_returns_false_when_no_checkpoint(self, tmp_path: Path) -> None:
+        """[P1] Given no checkpoint, when cleared, then False returned."""
+        # Given
+        rule = "test"
+        wildcards = {"key": "value"}
+        # Not marked complete
+
+        # When
+        result = clear_checkpoint(rule, wildcards, tmp_path)
+
+        # Then
+        assert result is False
+
+    def test_allows_re_completion_after_clear(self, tmp_path: Path) -> None:
+        """[P2] Given cleared checkpoint, when marked again, then new checkpoint created."""
+        # Given
+        rule = "test"
+        wildcards = {"key": "value"}
+        mark_rule_complete(rule, wildcards, tmp_path, timestamp="2026-01-01T00:00:00Z")
+        clear_checkpoint(rule, wildcards, tmp_path)
+
+        # When
+        new_path = mark_rule_complete(rule, wildcards, tmp_path, timestamp="2026-01-02T00:00:00Z")
+
+        # Then
+        assert new_path.exists()
+        assert get_rule_completion_time(rule, wildcards, tmp_path) == "2026-01-02T00:00:00Z"

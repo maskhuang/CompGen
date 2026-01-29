@@ -2,7 +2,8 @@
 CompGene Audit Metadata Collection.
 
 This module provides functionality for collecting and writing
-audit metadata for rule executions.
+audit metadata for rule executions, including checkpoint markers
+for reliable --rerun-incomplete behavior.
 
 Source: ADR-004 Audit Granularity (Rule-level)
 """
@@ -13,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from workflow.lib.io import atomic_write_json
+from workflow.lib.io import atomic_write_json, atomic_write
 from workflow.lib.checksum import compute_checksums
 
 
@@ -266,3 +267,151 @@ def create_and_write_audit(
     audit_path = write_run_json(metadata, meta_dir)
 
     return metadata, audit_path
+
+
+# =============================================================================
+# Checkpoint Marker Functions (Story 1.7)
+# =============================================================================
+
+def get_checkpoint_path(
+    rule: str,
+    wildcards: dict[str, str],
+    meta_dir: Path = Path("results/meta")
+) -> Path:
+    """
+    Generate the checkpoint marker file path for a rule execution.
+
+    Checkpoint markers (.done files) indicate that a rule has completed
+    successfully, enabling reliable --rerun-incomplete behavior.
+
+    Args:
+        rule: The rule name.
+        wildcards: Dictionary of wildcard values.
+        meta_dir: Base directory for metadata (default: "results/meta").
+
+    Returns:
+        Path to the .done checkpoint file.
+
+    Example:
+        >>> path = get_checkpoint_path("orthofinder", {"species_set": "lemur"})
+        >>> print(path)
+        results/meta/orthofinder/species_set=lemur.done
+    """
+    if wildcards:
+        wildcard_str = "_".join(f"{k}={v}" for k, v in sorted(wildcards.items()))
+    else:
+        wildcard_str = "default"
+
+    return meta_dir / rule / f"{wildcard_str}.done"
+
+
+def mark_rule_complete(
+    rule: str,
+    wildcards: dict[str, str],
+    meta_dir: Path = Path("results/meta"),
+    timestamp: Optional[str] = None
+) -> Path:
+    """
+    Write a checkpoint marker indicating a rule has completed successfully.
+
+    The marker file contains the completion timestamp for traceability.
+    This marker is used alongside Snakemake's native --rerun-incomplete
+    to provide additional checkpoint information.
+
+    Args:
+        rule: The rule name.
+        wildcards: Dictionary of wildcard values.
+        meta_dir: Base directory for metadata (default: "results/meta").
+        timestamp: Optional ISO timestamp (generated if not provided).
+
+    Returns:
+        Path to the written checkpoint file.
+
+    Example:
+        >>> path = mark_rule_complete("orthofinder", {"species_set": "lemur"})
+        >>> print(f"Checkpoint: {path}")
+    """
+    if timestamp is None:
+        timestamp = datetime.now(timezone.utc).isoformat()
+
+    checkpoint_path = get_checkpoint_path(rule, wildcards, meta_dir)
+    atomic_write(checkpoint_path, f"{timestamp}\n")
+    return checkpoint_path
+
+
+def is_rule_complete(
+    rule: str,
+    wildcards: dict[str, str],
+    meta_dir: Path = Path("results/meta")
+) -> bool:
+    """
+    Check if a rule has been marked as complete.
+
+    Args:
+        rule: The rule name.
+        wildcards: Dictionary of wildcard values.
+        meta_dir: Base directory for metadata (default: "results/meta").
+
+    Returns:
+        True if the checkpoint marker exists, False otherwise.
+
+    Example:
+        >>> if is_rule_complete("orthofinder", {"species_set": "lemur"}):
+        ...     print("Rule already completed")
+    """
+    checkpoint_path = get_checkpoint_path(rule, wildcards, meta_dir)
+    return checkpoint_path.exists()
+
+
+def get_rule_completion_time(
+    rule: str,
+    wildcards: dict[str, str],
+    meta_dir: Path = Path("results/meta")
+) -> Optional[str]:
+    """
+    Get the completion timestamp for a rule.
+
+    Args:
+        rule: The rule name.
+        wildcards: Dictionary of wildcard values.
+        meta_dir: Base directory for metadata (default: "results/meta").
+
+    Returns:
+        ISO timestamp string if rule is complete, None otherwise.
+
+    Example:
+        >>> ts = get_rule_completion_time("orthofinder", {"species_set": "lemur"})
+        >>> if ts:
+        ...     print(f"Completed at: {ts}")
+    """
+    checkpoint_path = get_checkpoint_path(rule, wildcards, meta_dir)
+    if checkpoint_path.exists():
+        return checkpoint_path.read_text().strip()
+    return None
+
+
+def clear_checkpoint(
+    rule: str,
+    wildcards: dict[str, str],
+    meta_dir: Path = Path("results/meta")
+) -> bool:
+    """
+    Remove a checkpoint marker to allow a rule to be re-run.
+
+    Args:
+        rule: The rule name.
+        wildcards: Dictionary of wildcard values.
+        meta_dir: Base directory for metadata (default: "results/meta").
+
+    Returns:
+        True if checkpoint was removed, False if it didn't exist.
+
+    Example:
+        >>> if clear_checkpoint("orthofinder", {"species_set": "lemur"}):
+        ...     print("Checkpoint cleared, rule will re-run")
+    """
+    checkpoint_path = get_checkpoint_path(rule, wildcards, meta_dir)
+    if checkpoint_path.exists():
+        checkpoint_path.unlink()
+        return True
+    return False

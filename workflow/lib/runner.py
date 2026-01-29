@@ -18,7 +18,7 @@ from typing import Optional
 
 from workflow.lib.errors import ErrorCode, CompGeneError
 from workflow.lib.logging import DualLogger
-from workflow.lib.audit import collect_run_metadata, write_run_json
+from workflow.lib.audit import collect_run_metadata, write_run_json, mark_rule_complete
 from workflow.adapters.base import BaseAdapter, AdapterContext, RunResult
 
 
@@ -172,6 +172,11 @@ class AdapterRunner:
                 exit_code=returncode,
                 logger=logger
             )
+
+            # Step 8: Write checkpoint marker (Story 1.7 - enables --rerun-incomplete)
+            mark_rule_complete(rule, wildcards, self.meta_dir)
+            if logger:
+                logger.info(f"Checkpoint marker written for {rule}")
 
             return result
 

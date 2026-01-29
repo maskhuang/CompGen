@@ -113,6 +113,91 @@ snakemake --snakefile workflow/Snakefile \
 
 Command-line values take precedence over values in config.yaml.
 
+## Checkpoint Resume and Dry-Run
+
+### Dry-Run Mode
+
+Preview the execution plan without running any rules:
+
+```bash
+# Standard dry-run
+snakemake --snakefile workflow/Snakefile --dry-run
+
+# Quiet mode (less output)
+snakemake --snakefile workflow/Snakefile --dry-run --quiet
+
+# Generate DAG visualization
+snakemake --snakefile workflow/Snakefile --dag | dot -Tsvg > dag.svg
+```
+
+### Checkpoint Resume
+
+If a pipeline run is interrupted, you can resume from where it left off:
+
+```bash
+# Resume from incomplete rules
+snakemake --snakefile workflow/Snakefile --rerun-incomplete
+
+# Continue with other rules if some fail
+snakemake --snakefile workflow/Snakefile --keep-going
+```
+
+### Caching and Rerun Triggers
+
+By default, Snakemake uses file modification time (mtime) to determine if rules need to be re-run. For stricter checking based on file content:
+
+```bash
+# Use checksums instead of mtime
+snakemake --snakefile workflow/Snakefile --rerun-triggers checksum
+```
+
+Performance note: Cache hit detection is optimized to complete in < 1 second even for large file sets.
+
+### Force Re-run
+
+To force re-run of specific rules:
+
+```bash
+# Force re-run a specific rule
+snakemake --snakefile workflow/Snakefile --forcerun rule_name
+
+# Force re-run all rules
+snakemake --snakefile workflow/Snakefile --forceall
+```
+
+## FAQ
+
+### How do I know if a rule needs to be re-run?
+
+Use dry-run mode to preview what would run:
+```bash
+snakemake --snakefile workflow/Snakefile --dry-run
+```
+
+If nothing is listed, all rules are up-to-date.
+
+### Why is my rule re-running even though inputs haven't changed?
+
+This can happen if:
+1. Output files were manually deleted
+2. File timestamps were modified (e.g., by copying files)
+3. You're using checksum mode and file content changed
+
+Use `--rerun-triggers mtime` (default) for timestamp-based checking or `--rerun-triggers checksum` for content-based checking.
+
+### How do I clean up after an interrupted run?
+
+Interrupted runs may leave behind `.tmp` files. The pipeline includes utilities to clean these up.
+
+From the `compgene/` directory (after running `pip install -e .`):
+```python
+from workflow.lib.io import cleanup_temp_files
+from pathlib import Path
+
+removed = cleanup_temp_files(Path("results/"))
+print(f"Cleaned up {len(removed)} temp files")
+```
+
 ## License
 
 MIT License

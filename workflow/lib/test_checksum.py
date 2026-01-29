@@ -9,10 +9,14 @@ from pathlib import Path
 
 import pytest
 
+import time
+
 from workflow.lib.checksum import (
     compute_file_checksum,
     compute_dir_checksum,
     compute_checksums,
+    ChecksumCache,
+    compute_checksums_cached,
 )
 
 
@@ -316,3 +320,232 @@ class TestComputeChecksums:
 
         # Then
         assert checksums == {}
+
+
+# =============================================================================
+# Test ChecksumCache (Story 1.7 - Performance Optimization)
+# =============================================================================
+
+class TestChecksumCache:
+    """Tests for ChecksumCache class."""
+
+    def test_creates_new_cache(self, tmp_path: Path) -> None:
+        """[P1] Given non-existent cache file, when created, then empty cache."""
+        # Given/When
+        cache = ChecksumCache(tmp_path)
+
+        # Then
+        assert len(cache) == 0
+
+    def test_get_or_compute_computes_on_miss(self, tmp_path: Path) -> None:
+        """[P1] Given uncached file, when get_or_compute, then checksum computed."""
+        # Given
+        file_path = tmp_path / "test.txt"
+        file_path.write_text("Test content")
+        cache = ChecksumCache(tmp_path)
+
+        # When
+        checksum = cache.get_or_compute(file_path)
+
+        # Then
+        assert checksum.startswith("sha256:")
+        assert len(cache) == 1
+
+    def test_get_or_compute_returns_cached(self, tmp_path: Path) -> None:
+        """[P1] Given cached file, when get_or_compute, then cached value returned."""
+        # Given
+        file_path = tmp_path / "test.txt"
+        file_path.write_text("Test content")
+        cache = ChecksumCache(tmp_path)
+
+        # First call - computes
+        checksum1 = cache.get_or_compute(file_path)
+
+        # When - second call should use cache
+        checksum2 = cache.get_or_compute(file_path)
+
+        # Then
+        assert checksum1 == checksum2
+
+    def test_cache_invalidates_on_file_change(self, tmp_path: Path) -> None:
+        """[P1] Given file changes, when get_or_compute, then recomputes."""
+        # Given
+        file_path = tmp_path / "test.txt"
+        file_path.write_text("Original content")
+        cache = ChecksumCache(tmp_path)
+
+        checksum1 = cache.get_or_compute(file_path)
+
+        # Modify file (with small delay to ensure mtime changes)
+        time.sleep(0.01)
+        file_path.write_text("Modified content")
+
+        # When
+        checksum2 = cache.get_or_compute(file_path)
+
+        # Then
+        assert checksum1 != checksum2
+
+    def test_save_and_load_cache(self, tmp_path: Path) -> None:
+        """[P1] Given cached checksums, when saved and loaded, then values preserved."""
+        # Given
+        file_path = tmp_path / "test.txt"
+        file_path.write_text("Test content")
+        cache1 = ChecksumCache(tmp_path)
+        checksum1 = cache1.get_or_compute(file_path)
+        cache1.save()
+
+        # When - create new cache from same location
+        cache2 = ChecksumCache(tmp_path)
+        checksum2 = cache2.get(file_path)
+
+        # Then
+        assert checksum2 == checksum1
+
+    def test_invalidate_removes_entry(self, tmp_path: Path) -> None:
+        """[P1] Given cached entry, when invalidate called, then entry removed."""
+        # Given
+        file_path = tmp_path / "test.txt"
+        file_path.write_text("Test content")
+        cache = ChecksumCache(tmp_path)
+        cache.get_or_compute(file_path)
+        assert len(cache) == 1
+
+        # When
+        result = cache.invalidate(file_path)
+
+        # Then
+        assert result is True
+        assert len(cache) == 0
+        assert cache.get(file_path) is None
+
+    def test_invalidate_returns_false_for_missing(self, tmp_path: Path) -> None:
+        """[P2] Given no cached entry, when invalidate called, then returns False."""
+        # Given
+        cache = ChecksumCache(tmp_path)
+
+        # When
+        result = cache.invalidate(tmp_path / "nonexistent.txt")
+
+        # Then
+        assert result is False
+
+    def test_clear_removes_all_entries(self, tmp_path: Path) -> None:
+        """[P1] Given multiple cached entries, when clear called, then all removed."""
+        # Given
+        file1 = tmp_path / "file1.txt"
+        file2 = tmp_path / "file2.txt"
+        file1.write_text("Content 1")
+        file2.write_text("Content 2")
+        cache = ChecksumCache(tmp_path)
+        cache.get_or_compute(file1)
+        cache.get_or_compute(file2)
+        assert len(cache) == 2
+
+        # When
+        cache.clear()
+
+        # Then
+        assert len(cache) == 0
+
+    def test_handles_corrupted_cache_file(self, tmp_path: Path) -> None:
+        """[P2] Given corrupted cache file, when loaded, then starts fresh."""
+        # Given
+        cache_file = tmp_path / ".checksum_cache.json"
+        cache_file.write_text("{ invalid json }")
+
+        # When
+        cache = ChecksumCache(tmp_path)
+
+        # Then
+        assert len(cache) == 0
+
+    def test_get_returns_none_for_directory(self, tmp_path: Path) -> None:
+        """[P2] Given directory path, when get called, then None returned."""
+        # Given
+        dir_path = tmp_path / "subdir"
+        dir_path.mkdir()
+        cache = ChecksumCache(tmp_path)
+
+        # When
+        result = cache.get(dir_path)
+
+        # Then
+        assert result is None
+
+    def test_cache_hit_is_fast(self, tmp_path: Path) -> None:
+        """[P2] Given cached checksum, when retrieved, then < 1ms response."""
+        # Given
+        file_path = tmp_path / "test.txt"
+        file_path.write_text("Test content for speed test")
+        cache = ChecksumCache(tmp_path)
+
+        # First call - computes
+        cache.get_or_compute(file_path)
+
+        # When - measure cache hit time
+        start = time.perf_counter()
+        for _ in range(1000):
+            cache.get(file_path)
+        elapsed = time.perf_counter() - start
+
+        # Then - 1000 cache hits should be < 1 second
+        assert elapsed < 1.0, f"1000 cache hits took {elapsed:.3f}s (should be < 1s)"
+
+
+# =============================================================================
+# Test compute_checksums_cached
+# =============================================================================
+
+class TestComputeChecksumsCached:
+    """Tests for compute_checksums_cached function."""
+
+    def test_uses_cache_for_files(self, tmp_path: Path) -> None:
+        """[P1] Given files, when called twice, then cache used for second call."""
+        # Given
+        file1 = tmp_path / "file1.txt"
+        file2 = tmp_path / "file2.txt"
+        file1.write_text("Content 1")
+        file2.write_text("Content 2")
+        cache = ChecksumCache(tmp_path)
+        paths = {"first": file1, "second": file2}
+
+        # First call
+        checksums1 = compute_checksums_cached(paths, cache)
+
+        # When - second call
+        checksums2 = compute_checksums_cached(paths, cache)
+
+        # Then
+        assert checksums1 == checksums2
+        assert len(cache) == 2
+
+    def test_handles_directories_without_caching(self, tmp_path: Path) -> None:
+        """[P1] Given directories, when called, then computed (not cached)."""
+        # Given
+        dir_path = tmp_path / "subdir"
+        dir_path.mkdir()
+        (dir_path / "file.txt").write_text("Content")
+        cache = ChecksumCache(tmp_path)
+        paths = {"dir": dir_path}
+
+        # When
+        checksums = compute_checksums_cached(paths, cache)
+
+        # Then
+        assert checksums["dir"].startswith("sha256:")
+        # Directories are not cached
+        assert len(cache) == 0
+
+    def test_handles_missing_files(self, tmp_path: Path) -> None:
+        """[P1] Given missing file, when called, then marked as MISSING."""
+        # Given
+        missing = tmp_path / "nonexistent.txt"
+        cache = ChecksumCache(tmp_path)
+        paths = {"missing": missing}
+
+        # When
+        checksums = compute_checksums_cached(paths, cache)
+
+        # Then
+        assert "MISSING" in checksums["missing"]

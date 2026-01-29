@@ -57,11 +57,8 @@ from workflow.lib.audit import (
     create_and_write_audit,
 )
 
-# Runner (Story 1.6)
-from workflow.lib.runner import (
-    AdapterRunner,
-    RetryConfig,
-)
+# Runner (Story 1.6) - Import directly from workflow.lib.runner to avoid circular import
+# Usage: from workflow.lib.runner import AdapterRunner, RetryConfig
 
 __all__ = [
     # errors
@@ -94,7 +91,5 @@ __all__ = [
     "collect_run_metadata",
     "write_run_json",
     "create_and_write_audit",
-    # runner
-    "AdapterRunner",
-    "RetryConfig",
+    # runner - import directly from workflow.lib.runner
 ]

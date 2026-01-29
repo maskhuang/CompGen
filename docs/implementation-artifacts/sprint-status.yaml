@@ -39,14 +39,14 @@ story_location: docs/implementation-artifacts
 
 development_status:
   # Epic 1: 项目基础设施、配置与可观测性
-  epic-1: in-progress
+  epic-1: done
   1-1-project-skeleton-init: done
   1-2-config-schema-validation: done
   1-3-error-code-system: done
   1-4-logging-audit-foundation: done
   1-5-base-adapter-framework: done
   1-6-unified-runner-retry: done
-  1-7-checkpoint-resume-dryrun: backlog
+  1-7-checkpoint-resume-dryrun: done
   epic-1-retrospective: optional
 
   # Epic 2: 数据标准化与质控
