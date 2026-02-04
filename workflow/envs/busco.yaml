@@ -1,5 +1,17 @@
+# BUSCO environment for annotation completeness assessment
+# Supports BUSCO 5.x and 6.x
+# Source: Story 2.4 BUSCO QC
+
 channels:
   - conda-forge
   - bioconda
+  - defaults
+
 dependencies:
-  - busco
+  - busco>=5.4,<7.0  # Support 5.x and 6.x
+  - python>=3.9
+  - hmmer>=3.3
+  - metaeuk>=6
+  - prodigal>=2.6
+  - sepp>=4.5
+  - biopython>=1.79

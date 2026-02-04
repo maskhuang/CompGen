@@ -8,6 +8,7 @@ configfile: "config/config.yaml"
 validate(config, schema="../schemas/config.schema.yaml")
 
 include: "rules/common.smk"
+include: "rules/download.smk"
 include: "rules/standardize.smk"
 include: "rules/qc.smk"
 include: "rules/orthology.smk"

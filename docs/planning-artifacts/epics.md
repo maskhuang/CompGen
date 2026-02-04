@@ -29,9 +29,9 @@ This document provides the complete epic and story breakdown for CompGene, decom
 
 - FR6: 系统可调用 OrthoFinder 执行 orthogroup 推断
 - FR7: 系统可生成 orthogroups 表（跨物种基因家族分组）
-- FR8: 系统可输出物种树和基因树
-- FR9: 系统可统计每物种的 orthogroup copy number
-- FR10: 系统可识别物种特异性 orthogroups
+- ~~FR8: 系统可输出物种树和基因树~~ → **Post-MVP**
+- ~~FR9: 系统可统计每物种的 orthogroup copy number~~ → **Post-MVP**
+- ~~FR10: 系统可识别物种特异性 orthogroups~~ → **Post-MVP**
 
 **功能注释能力 - eggNOG-mapper (FR11-FR15)**
 
@@ -181,9 +181,9 @@ This document provides the complete epic and story breakdown for CompGene, decom
 | FR5b | Epic 2 | 标准化目录 |
 | FR6 | Epic 3 | OrthoFinder 调用 |
 | FR7 | Epic 3 | Orthogroups 表 |
-| FR8 | Epic 3 | 物种树/基因树 |
-| FR9 | Epic 3 | Copy number 统计 |
-| FR10 | Epic 3 | 物种特异 OG |
+| ~~FR8~~ | Post-MVP | 物种树/基因树 |
+| ~~FR9~~ | Post-MVP | Copy number 统计 |
+| ~~FR10~~ | Post-MVP | 物种特异 OG |
 | FR11 | Epic 4 | eggNOG-mapper 调用 |
 | FR12 | Epic 4 | 数据库选择 |
 | FR13 | Epic 4 | GO/KEGG/COG 提取 |
@@ -197,7 +197,7 @@ This document provides the complete epic and story breakdown for CompGene, decom
 | FR21 | Epic 6A | 多物种比较 |
 | FR22 | Epic 6A | 基因家族统计 |
 | FR23 | Epic 6B | 物种特异性识别 |
-| FR24 | Epic 6B | Liftoff 可信度整合 |
+| FR24 | Epic 6B | Liftoff 结果整合（可选） |
 | FR25 | Epic 6B | 比较汇总报告 |
 | FR26 | Epic 7 | Counts 矩阵输入 |
 | FR27 | Epic 7 | DESeq2 调用 |
@@ -258,15 +258,15 @@ This document provides the complete epic and story breakdown for CompGene, decom
 
 ---
 
-### Epic 3: 直系同源分析
+### Epic 3: 直系同源分析 (OrthoFinder)
 
-用户可以识别跨物种的直系同源基因，获得 orthogroups 和系统发育树。
+用户可以识别跨物种的直系同源基因，获得 orthogroups。输入为基因组和注释，内部自动提取蛋白序列。
 
-**FRs 覆盖：** FR6-10
+**FRs 覆盖：** FR6-7（FR8-10 移至 Post-MVP）
 
 **实现内容：**
 - rules/orthology.smk
-- adapters/orthofinder.py
+- lib/protein_extract.py
 - envs/orthofinder.yaml
 
 ---
@@ -284,15 +284,15 @@ This document provides the complete epic and story breakdown for CompGene, decom
 
 ---
 
-### Epic 5: 缺失核验
+### Epic 5: 注释迁移与缺失检测 (Liftoff)
 
-用户可以区分"真缺失"与"注释假缺失"，获得可信的缺失候选清单。
+用户可以将参考注释映射到目标基因组，检测基因缺失。独立于 OrthoFinder 运行。
 
 **FRs 覆盖：** FR16-19
 
 **实现内容：**
-- rules/validation.smk
-- adapters/liftoff.py
+- rules/liftoff.smk
+- lib/liftoff.py
 - envs/liftoff.yaml
 
 ---
@@ -311,15 +311,15 @@ This document provides the complete epic and story breakdown for CompGene, decom
 
 ### Epic 6B: 存在/缺失分析（增强）
 
-用户可以识别物种特异基因，整合 Liftoff 可信度标记，生成汇总报告。
+用户可以识别物种特异基因，可选整合 Liftoff 结果，生成汇总报告。
 
 **FRs 覆盖：** FR23-25
 
-**依赖：** Epic 5 + Epic 6A
+**依赖：** Epic 6A（Epic 5 可选整合）
 
 **实现内容：**
 - rules/matrices.smk（增强部分）
-- 可信度标记逻辑
+- 可选 Liftoff 整合逻辑
 - 比较汇总报告
 
 ---
@@ -569,7 +569,7 @@ So that **我不需要手动查找和下载数据**。
 
 **Given** 配置文件中 annotation 为 NCBI 标识符
 **When** 执行 standardize rule
-**Then** 自动从 NCBI 下载基因组和注释文件
+**Then** 自动从 NCBI 下载基因组序列（*_genomic.fna.gz）和注释文件（*_genomic.gff.gz）
 
 **Given** 已下载过相同标识符的数据
 **When** 再次请求
@@ -599,81 +599,64 @@ So that **我能了解数据质量并识别潜在问题**。
 
 ---
 
-## Epic 3: 直系同源分析
+## Epic 3: 直系同源分析 (OrthoFinder)
 
-用户可以识别跨物种的直系同源基因，获得 orthogroups 和系统发育树。
+用户可以识别跨物种的直系同源基因，获得 orthogroups。
 
-### Story 3.1: OrthoFinder Adapter
+**设计说明：** OrthoFinder 专注于直系同源关系推断，不负责缺失检测（由 Liftoff 负责）。输入为基因组和注释文件，内部自动提取蛋白序列。
+
+### Story 3.1: 蛋白序列提取
 
 As a **计算生物学研究员**,
-I want **系统能调用 OrthoFinder 进行直系同源推断**,
+I want **系统从 GFF 注释和基因组中自动提取蛋白序列**,
+So that **我不需要手动准备 OrthoFinder 输入**。
+
+**Acceptance Criteria:**
+
+**Given** 物种的基因组 (.fna) 和注释 (.gff)
+**When** 执行 extract_proteins rule
+**Then** 从 CDS 提取并翻译蛋白序列
+**And** 输出 proteins.fa 到 results/proteins/{species}/
+
+**Given** 基因有多个转录本
+**When** 提取蛋白序列
+**Then** 选择最长转录本作为代表
+
+---
+
+### Story 3.2: OrthoFinder 运行
+
+As a **计算生物学研究员**,
+I want **系统调用 OrthoFinder 进行直系同源推断**,
 So that **我可以识别跨物种的基因家族关系**。
 
 **Acceptance Criteria:**
 
-**Given** 多个物种的标准化蛋白序列
-**When** 执行 orthology_infer rule
+**Given** 多个物种的蛋白序列（由 Story 3.1 生成）
+**When** 执行 orthofinder rule
 **Then** 调用 OrthoFinder 执行 orthogroup 推断
-**And** 输出到 results/orthology/{species_set}/
+**And** 输出到 results/orthology/
 
-**Given** OrthoFinder 版本不兼容
-**When** 检测版本
-**Then** 返回 E_TOOL_VERSION 错误码
-
-**Given** OrthoFinder 执行超时
-**When** 超过配置的超时时间
-**Then** 返回 E_TIMEOUT 并记录已完成进度
-
----
-
-### Story 3.2: Orthogroups 表生成
-
-As a **计算生物学研究员**,
-I want **获得结构化的 orthogroups 表**,
-So that **我可以查看跨物种的基因家族分组**。
-
-**Acceptance Criteria:**
-
-**Given** OrthoFinder 运行完成
+**Given** OrthoFinder 执行完成
 **When** 解析输出
-**Then** 生成 orthogroups.tsv 包含：orthogroup_id, gene_id, species_id
-
-**Given** orthogroups 表生成完成
-**When** 查询特定基因
-**Then** 可以找到其所属的 orthogroup 和同组的其他物种基因
+**Then** 生成 orthogroups.tsv：orthogroup_id, gene_id, species_id
 
 ---
 
-### Story 3.3: 物种树与基因树输出
+### Story 3.3: Orthogroups 结果输出
 
 As a **计算生物学研究员**,
-I want **获得物种树和基因树**,
-So that **我可以了解物种间的进化关系**。
+I want **获得结构化的直系同源分析结果**,
+So that **我可以了解基因家族关系**。
 
 **Acceptance Criteria:**
 
 **Given** OrthoFinder 运行完成
-**When** 提取树文件
-**Then** 输出 species_tree.nwk（Newick 格式）
-**And** 输出各 orthogroup 的基因树到 gene_trees/ 目录
-
----
-
-### Story 3.4: Copy Number 统计
-
-As a **计算生物学研究员**,
-I want **统计每物种在各 orthogroup 中的基因拷贝数**,
-So that **我可以识别基因家族扩张或收缩**。
-
-**Acceptance Criteria:**
-
-**Given** orthogroups 表生成完成
-**When** 统计 copy number
-**Then** 生成 copy_number.tsv：每行一个 orthogroup，每列一个物种，值为基因数量
-
-**Given** copy number 矩阵
-**When** 分析模式
-**Then** 可以识别物种特异性 orthogroups（仅在单一物种中存在）
+**When** 整理输出
+**Then** 生成以下文件：
+- orthogroups.tsv：基因到 orthogroup 的映射
+- orthogroup_stats.tsv：每个 orthogroup 的基因数统计
+- species_overlap.tsv：物种间共享 orthogroup 数量
 
 ---
 
@@ -733,81 +716,82 @@ So that **我可以了解基因家族的整体功能**。
 
 ---
 
-## Epic 5: 缺失核验
+## Epic 5: 注释迁移与缺失检测 (Liftoff)
 
-用户可以区分"真缺失"与"注释假缺失"，获得可信的缺失候选清单。
+用户可以将参考物种的注释映射到目标物种基因组，检测基因缺失。
+
+**设计说明：** 本 Epic 独立于 OrthoFinder (Epic 3)。OrthoFinder 用于寻找直系同源关系，Liftoff 用于检测基因缺失。两者可独立运行，后续可选整合。
 
 **核心工作流：**
 ```
-OrthoFinder (Epic 3)                    Liftoff 核验                     最终判定
-────────────────────                   ─────────────                    ──────────
-presence_absence.tsv     ┌──────────────────────────┐
-  Species B 缺少 OG  ───►│ Liftoff: A → B           │
-                         │ 参考注释 → 目标装配       │
-                         └───────────┬──────────────┘
-                                     │
-                      ┌──────────────┴──────────────┐
-                      ▼                             ▼
-              高置信映射成功                    映射失败/低质
-              coverage ≥90%                   coverage <50%
-              identity ≥85%                   或无映射
-                      │                             │
-                      ▼                             ▼
-              注释假缺失                       真缺失候选
-              (false_absence)                (true_absence)
-              → 补全注释                      → 高可信度标记
-              → confidence: low              → confidence: high
+参考物种 (Reference)                  目标物种 (Target)                 输出
+────────────────────                 ────────────────                 ──────
+
+annotation.gff3  ──────────────────►  genome.fa  ──────────────────►  lifted_annotation.gff3
+(参考注释)           Liftoff          (目标基因组)                      (迁移后注释)
+                                                                           │
+                                                                           ▼
+                                                                     映射统计分析
+                                                                           │
+                                    ┌──────────────────────────────────────┤
+                                    ▼                                      ▼
+                              映射成功                               映射失败/低质
+                              coverage ≥50%                         coverage <50%
+                              identity ≥50%                         或无映射
+                                    │                                      │
+                                    ▼                                      ▼
+                              目标物种存在                            缺失候选
+                              (lifted genes)                        (missing genes)
 ```
 
 ### Story 5.1: Liftoff Adapter
 
 As a **计算生物学研究员**,
-I want **系统能调用 Liftoff 进行注释映射**,
-So that **我可以验证基因缺失是真实的还是注释遗漏**。
+I want **系统能调用 Liftoff 将参考注释映射到目标基因组**,
+So that **我可以检测目标物种中哪些基因缺失**。
 
 **Acceptance Criteria:**
 
-**Given** 参考物种注释和目标物种基因组
-**When** 执行 validation_liftoff rule
+**Given** 用户在配置文件中指定参考物种和目标物种
+**When** 执行 liftoff rule
 **Then** 调用 Liftoff 将参考注释映射到目标 assembly
-**And** 输出到 results/validation/liftoff/{source}_to_{target}/
-
-**Given** OrthoFinder 输出的缺失基因列表
-**When** 确定需要核验的基因
-**Then** 仅对缺失候选执行 Liftoff（而非全基因组）
-**And** 生成 liftoff_targets.txt 记录待核验基因
+**And** 输出到 results/liftoff/{reference}_to_{target}/
 
 **Given** Liftoff 执行完成
 **When** 解析输出
-**Then** 提取映射统计：coverage, sequence_identity, copy_number
-**And** 生成 liftoff_stats.tsv
+**Then** 生成 lifted_annotation.gff3（迁移后的注释）
+**And** 生成 unmapped_features.txt（未映射的特征列表）
+**And** 生成 liftoff_stats.tsv（映射统计）
+
+**Given** 用户配置多对物种比较
+**When** 执行批量 liftoff
+**Then** 为每对物种生成独立的输出目录
 
 ---
 
-### Story 5.2: 真缺失 vs 假缺失识别
+### Story 5.2: 映射质量分析与缺失检测
 
 As a **计算生物学研究员**,
-I want **区分真正的基因缺失和注释遗漏**,
-So that **我的比较分析结果更可靠**。
+I want **分析 Liftoff 映射质量并识别缺失基因**,
+So that **我可以知道哪些基因在目标物种中缺失**。
 
 **Acceptance Criteria:**
 
-**Given** Liftoff 映射结果和统计
-**When** 应用判定规则
+**Given** Liftoff 映射结果
+**When** 分析映射质量
 **Then** 根据 coverage 和 identity 分类基因：
 
-| liftoff_status | coverage | identity | verdict |
-|----------------|----------|----------|---------|
-| mapped | ≥90% | ≥85% | `false_absence` (注释假缺失) |
-| partial | 50-90% | any | `likely_false` (可能假缺失) |
-| partial | <50% | any | `likely_true` (可能真缺失) |
-| unmapped | - | - | `true_absence` (真缺失候选) |
+| 映射状态 | coverage | identity | 分类 |
+|---------|----------|----------|------|
+| mapped | ≥50% | ≥50% | `present` (存在) |
+| partial | <50% | any | `uncertain` (不确定) |
+| unmapped | - | - | `missing` (缺失候选) |
 
 **Given** 分类完成
-**When** 生成候选清单
-**Then** 输出 true_absence_candidates.tsv：
+**When** 生成缺失清单
+**Then** 输出 missing_genes.tsv：
 ```
-gene_id, source_species, target_species, liftoff_status, coverage, identity, verdict
+gene_id, gene_name, reference_species, target_species, liftoff_status, coverage, identity
 ```
 
 **Given** 可配置的阈值参数
@@ -815,35 +799,28 @@ gene_id, source_species, target_species, liftoff_status, coverage, identity, ver
 **Then** 支持通过 config.yaml 覆盖默认阈值：
 ```yaml
 liftoff:
-  thresholds:
-    high_confidence_coverage: 0.90
-    high_confidence_identity: 0.85
-    partial_coverage_min: 0.50
+  min_coverage: 0.50
+  min_identity: 0.50
 ```
 
 ---
 
-### Story 5.3: 补全注释文件
+### Story 5.3: 迁移注释输出
 
 As a **计算生物学研究员**,
-I want **生成包含 Liftoff 补全的注释文件**,
-So that **我可以使用更完整的注释进行下游分析**。
+I want **获得目标物种的迁移注释文件**,
+So that **我可以用于下游分析**。
 
 **Acceptance Criteria:**
 
-**Given** Liftoff 成功映射的基因（verdict = false_absence）
-**When** 生成补全注释
-**Then** 输出 lifted_annotation.gff3：包含原始注释 + Liftoff 补全的基因
-**And** 补全基因添加属性 `source=liftoff;liftoff_coverage=X;liftoff_identity=Y`
+**Given** Liftoff 成功映射的基因
+**When** 生成迁移注释
+**Then** 输出 lifted_annotation.gff3
+**And** 每个特征添加属性 `liftoff_coverage=X;liftoff_identity=Y;source_gene=Z`
 
-**Given** 补全注释与原始注释有冲突
-**When** 合并时
-**Then** 优先保留原始注释，Liftoff 结果作为补充
-**And** 冲突记录到 annotation_conflicts.tsv
-
-**Given** 需要追溯补全来源
-**When** 查询补全基因
-**Then** 可通过 GFF3 属性追溯：原参考物种、映射质量、原始基因 ID
+**Given** 需要追溯来源
+**When** 查询迁移基因
+**Then** 可通过 GFF3 属性追溯：参考物种、原始基因 ID、映射质量
 
 ---
 
@@ -917,51 +894,39 @@ So that **我可以研究物种独特的基因**。
 
 ---
 
-### Story 6B.2: Liftoff 可信度整合
+### Story 6B.2: Liftoff 结果整合（可选）
 
 As a **计算生物学研究员**,
-I want **将 Liftoff 核验结果整合到比较矩阵中**,
-So that **我可以知道哪些缺失是可信的**。
+I want **可选地将 Liftoff 缺失检测结果整合到 OrthoFinder 分析中**,
+So that **我可以交叉验证两种方法的结果**。
+
+**说明：** 此 Story 为可选功能。OrthoFinder 和 Liftoff 可独立运行，整合是增强功能。
 
 **数据流：**
 ```
-Epic 5 输出                              Epic 6B 整合
-───────────                             ────────────
-true_absence_candidates.tsv  ──┐
-  (verdict: true_absence/      │
-   false_absence/likely_*)     ├──► presence_absence_verified.tsv
-                               │      (含 confidence 列)
-presence_absence.tsv ──────────┘
-  (0/1 矩阵)
+OrthoFinder (Epic 3)                    Liftoff (Epic 5)
+────────────────────                    ────────────────
+presence_absence.tsv  ──┐               missing_genes.tsv  ──┐
+  (基于 orthogroup)     │                 (基于注释映射)       │
+                        ├──► integrated_comparison.tsv ◄─────┘
+                        │      (整合比较结果)
 ```
 
 **Acceptance Criteria:**
 
-**Given** presence/absence 矩阵（Epic 6A）和 true_absence_candidates.tsv（Epic 5）
-**When** 整合可信度标记
-**Then** 生成 presence_absence_verified.tsv：
+**Given** 用户同时运行了 OrthoFinder 和 Liftoff
+**When** 选择整合结果
+**Then** 生成 integrated_comparison.tsv，标记两种方法的一致性：
 ```
-orthogroup_id, species_a, species_b, ..., species_a_conf, species_b_conf, ...
-OG0000001,     1,         0,              na,            high,           ...
-OG0000002,     1,         1,              na,            na,             ...
-OG0000003,     0,         1,              low,           na,             ...
+gene_id, orthogroup_id, orthofinder_status, liftoff_status, consensus
+GENE001, OG0001,        present,            present,        confirmed_present
+GENE002, OG0002,        absent,             missing,        confirmed_absent
+GENE003, OG0003,        absent,             present,        discrepancy
 ```
 
-**Given** Liftoff verdict 值
-**When** 映射到 confidence
-**Then** 应用映射规则：
-
-| Liftoff verdict | confidence | 含义 |
-|-----------------|------------|------|
-| `true_absence` | `high` | 真缺失，高可信度 |
-| `likely_true` | `medium` | 可能真缺失 |
-| `likely_false` | `low` | 可能假缺失（注释遗漏） |
-| `false_absence` | `very_low` | 确认假缺失（已被 Liftoff 补全） |
-| 未核验 | `na` | 未执行 Liftoff 核验 |
-
-**Given** 用户查询特定缺失的可信度
-**When** 需要追溯详情
-**Then** 可通过 orthogroup_id + species 关联回 true_absence_candidates.tsv 获取 coverage/identity
+**Given** 两种方法结果不一致
+**When** 生成报告
+**Then** 标记为 `discrepancy`，供用户人工检查
 
 ---
 
@@ -979,7 +944,7 @@ So that **我可以快速了解分析结果**。
 - 物种数量和名称
 - Orthogroup 总数和分布
 - 物种特异基因统计
-- 可信度分布统计
+- 如有 Liftoff 整合：方法一致性统计
 
 ---
 
@@ -1134,4 +1099,7 @@ So that **我可以直观地浏览分析结果**。
 
 ## Post-MVP Features
 
+- FR8: 物种树和基因树输出
+- FR9: Orthogroup copy number 统计
+- FR10: 物种特异性 orthogroups 识别
 - FR15: 功能富集统计报告

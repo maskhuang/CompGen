@@ -46,7 +46,7 @@ properties:
           description: "Path to genome assembly FASTA or NCBI accession"
         annotation:
           type: string
-          description: "Path to annotation GFF3/GTF or NCBI accession"
+          description: "Path to annotation GFF3/GTF or NCBI accession (e.g., NCBI:GCF_000165445.1 or GCF_000165445.1)"
 
   analysis:
     type: object
@@ -71,6 +71,66 @@ properties:
             type: boolean
             description: "Enable RNA-seq expression analysis"
             default: false
+
+  ncbi:
+    type: object
+    description: "NCBI download configuration"
+    additionalProperties: false
+    properties:
+      api_key:
+        type: string
+        description: "NCBI API key for higher rate limits (optional, can also use NCBI_API_KEY env var)"
+      rate_limit:
+        type: number
+        description: "Requests per second limit (3.0 without API key, 10.0 with)"
+        minimum: 0.1
+        maximum: 10.0
+        default: 3.0
+      cache_dir:
+        type: string
+        description: "Directory for caching downloaded files"
+        default: "results/downloads/ncbi"
+      force_download:
+        type: boolean
+        description: "Force re-download even if cached data exists"
+        default: false
+
+  busco:
+    type: object
+    description: "BUSCO quality control configuration (Story 2.4)"
+    required:
+      - lineage
+    additionalProperties: false
+    properties:
+      lineage:
+        type: string
+        description: "BUSCO lineage database (e.g., eukaryota_odb10, primates_odb10, mammalia_odb10)"
+        minLength: 1
+        examples:
+          - "eukaryota_odb10"
+          - "primates_odb10"
+          - "mammalia_odb10"
+      mode:
+        type: string
+        description: "BUSCO run mode"
+        enum:
+          - "proteins"
+          - "genome"
+          - "transcriptome"
+        default: "proteins"
+      download_path:
+        type: string
+        description: "Path for lineage database storage/download"
+      offline:
+        type: boolean
+        description: "Offline mode - do not auto-download lineage databases"
+        default: false
+      timeout:
+        type: integer
+        description: "Execution timeout in seconds"
+        minimum: 60
+        maximum: 86400
+        default: 1800
 
   resources:
     type: object
