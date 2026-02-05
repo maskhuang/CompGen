@@ -134,7 +134,7 @@ properties:
 
   liftoff:
     type: object
-    description: "Liftoff annotation lifting configuration (Story 5.1)"
+    description: "Liftoff annotation lifting configuration (Story 5.1, 5.2, 5.3)"
     additionalProperties: false
     properties:
       comparisons:
@@ -149,7 +149,7 @@ properties:
           properties:
             reference:
               type: string
-              description: "Reference species name (must match a species in species list)"
+              description: "Reference species name (must match a species in species list or species_paths)"
               minLength: 1
             targets:
               type: array
@@ -158,6 +158,18 @@ properties:
                 type: string
                 minLength: 1
               minItems: 1
+      species_paths:
+        type: object
+        description: "Custom file paths for species (overrides standardized paths)"
+        additionalProperties:
+          type: object
+          properties:
+            genome:
+              type: string
+              description: "Path to genome FASTA (gzipped or uncompressed)"
+            annotation:
+              type: string
+              description: "Path to annotation GFF3 (gzipped or uncompressed)"
       min_coverage:
         type: number
         description: "Minimum sequence coverage threshold (0.0 to 1.0)"
@@ -170,6 +182,10 @@ properties:
         minimum: 0.0
         maximum: 1.0
         default: 0.5
+      include_uncertain:
+        type: boolean
+        description: "Include uncertain genes in enhanced annotation output (Story 5.3)"
+        default: false
       copies:
         type: boolean
         description: "Allow multiple copies of genes to be mapped"

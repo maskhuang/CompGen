@@ -1,15 +1,16 @@
 # Module: liftoff
 # Rules for annotation lifting using Liftoff
-# Implementation: Story 5.1, Story 5.2
+# Implementation: Story 5.1, Story 5.2, Story 5.3
 #
 # This module provides rules for lifting annotations from a reference
 # genome to target genomes using the Liftoff tool:
 #   results/liftoff/{reference}_to_{target}/
-#   ├── lifted_annotation.gff3      # Lifted annotation
-#   ├── unmapped_features.txt       # Unmapped features list
-#   ├── liftoff_stats.tsv           # Mapping statistics
-#   ├── gene_classification.tsv     # Gene classification results (Story 5.2)
-#   └── missing_genes.tsv           # Missing genes list (Story 5.2)
+#   ├── lifted_annotation.gff3          # Lifted annotation
+#   ├── unmapped_features.txt           # Unmapped features list
+#   ├── liftoff_stats.tsv               # Mapping statistics
+#   ├── gene_classification.tsv         # Gene classification results (Story 5.2)
+#   ├── missing_genes.tsv               # Missing genes list (Story 5.2)
+#   └── lifted_annotation_enhanced.gff3 # Enhanced annotation with liftoff attrs (Story 5.3)
 
 
 # =============================================================================
@@ -64,19 +65,62 @@ def get_classification_targets():
     return targets
 
 
+def get_enhance_targets():
+    """Get all enhanced annotation output targets for Story 5.3."""
+    targets = []
+    for comp in get_liftoff_comparisons():
+        ref = comp["reference"]
+        target = comp["target"]
+        targets.append(f"results/liftoff/{ref}_to_{target}/lifted_annotation_enhanced.gff3")
+    return targets
+
+
+def get_species_path(species_name: str, file_type: str, default_ext: str) -> str:
+    """
+    Get file path for a species from config or use default standardized path.
+
+    Args:
+        species_name: Species identifier
+        file_type: Type of file ('genome' or 'annotation')
+        default_ext: Default file extension for standardized path
+
+    Returns:
+        Path to the file (may be gzipped or uncompressed)
+
+    Config format:
+        liftoff:
+          species_paths:
+            ncbi_lct:
+              genome: /path/to/genome.fna.gz
+              annotation: /path/to/annotation.gff.gz
+            lab_lct:
+              genome: /path/to/assembly.fasta  # uncompressed OK
+    """
+    species_paths = config.get("liftoff", {}).get("species_paths", {})
+    if species_name in species_paths:
+        path = species_paths[species_name].get(file_type)
+        if path:
+            return path
+    # Default to standardized path
+    if file_type == "annotation":
+        return f"results/standardized/{species_name}/annotation.gff3.gz"
+    else:
+        return f"results/standardized/{species_name}/genome.fa.gz"
+
+
 def get_reference_gff(wildcards):
-    """Get standardized GFF path for reference species."""
-    return f"results/standardized/{wildcards.reference}/annotation.gff3.gz"
+    """Get GFF path for reference species (supports custom paths from config)."""
+    return get_species_path(wildcards.reference, "annotation", ".gz")
 
 
 def get_reference_fa(wildcards):
-    """Get standardized genome path for reference species."""
-    return f"results/standardized/{wildcards.reference}/genome.fa.gz"
+    """Get genome path for reference species (supports custom paths from config)."""
+    return get_species_path(wildcards.reference, "genome", ".fa.gz")
 
 
 def get_target_fa(wildcards):
-    """Get standardized genome path for target species."""
-    return f"results/standardized/{wildcards.target}/genome.fa.gz"
+    """Get genome path for target species (supports custom paths from config)."""
+    return get_species_path(wildcards.target, "genome", ".fa.gz")
 
 
 # =============================================================================
@@ -272,3 +316,48 @@ rule liftoff_absence_summary:
             writer.writeheader()
             if all_summaries:
                 writer.writerows(all_summaries)
+
+
+# =============================================================================
+# Annotation Enhancement Rules (Story 5.3)
+# =============================================================================
+
+rule liftoff_enhance:
+    """
+    Enhance lifted annotation with classification attributes.
+
+    Adds liftoff_coverage, liftoff_identity, liftoff_status, source_gene,
+    and reference_species attributes to the GFF3. Filters to only include
+    genes with 'present' status (or optionally 'uncertain').
+
+    Source: Story 5.3 - 迁移注释输出
+    """
+    input:
+        lifted_gff="results/liftoff/{reference}_to_{target}/lifted_annotation.gff3",
+        classification="results/liftoff/{reference}_to_{target}/gene_classification.tsv",
+    output:
+        enhanced_gff="results/liftoff/{reference}_to_{target}/lifted_annotation_enhanced.gff3",
+        run_json="results/meta/liftoff_enhance/reference={reference}_target={target}.run.json",
+    params:
+        include_uncertain=lambda wildcards: config.get("liftoff", {}).get("include_uncertain", False),
+    threads: 1
+    log:
+        "logs/liftoff_enhance/{reference}_to_{target}.log"
+    conda:
+        "../envs/liftoff.yaml"
+    script:
+        "../scripts/enhance_annotation.py"
+
+
+rule liftoff_enhance_all:
+    """
+    Run enhancement for all Liftoff comparisons.
+
+    Triggers enhancement for all configured reference-target pairs.
+
+    Source: Story 5.3 AC4 - 批量比较支持
+    """
+    input:
+        get_enhance_targets()
+    output:
+        touch("results/liftoff/.enhance_complete")

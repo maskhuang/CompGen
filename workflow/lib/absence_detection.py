@@ -123,8 +123,9 @@ def extract_coverage_identity(attributes: dict[str, str]) -> tuple[float, float]
         coverage = coverage / 100.0
 
     # Extract identity (try multiple attribute names)
+    # Note: Liftoff uses "sequence_ID" for sequence identity score
     identity = None
-    for key in ("identity", "sequence_identity"):
+    for key in ("identity", "sequence_identity", "sequence_ID"):
         if key in attributes:
             try:
                 identity = float(attributes[key])
@@ -217,7 +218,7 @@ def classify_liftoff_genes(
             "status": status,
             "coverage": coverage,
             "identity": identity,
-            "source_gene": feature.attributes.get("sequence_ID", ""),
+            "source_gene": feature.id or feature.attributes.get("ID", ""),
         })
 
     # Parse unmapped features - all are classified as missing

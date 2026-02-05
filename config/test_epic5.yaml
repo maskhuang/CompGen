@@ -1,0 +1,43 @@
+# Epic 5 Test Configuration
+# Compare NCBI annotations with lab assemblies
+# LCT = Lemur catta (Ring-tailed lemur)
+# MMU = Microcebus murinus (Mouse lemur)
+
+project:
+  name: "epic5_test"
+  output_dir: "./results"
+
+# Liftoff configuration
+liftoff:
+  min_coverage: 0.50
+  min_identity: 0.50
+  include_uncertain: false
+
+  # Species file paths (supports both gzipped and uncompressed)
+  species_paths:
+    # NCBI references
+    ncbi_lct:
+      genome: /net/eichler/vol28/projects/nhp_rearrangements/nobackups/lemur_annotations/ncbi_downloads/GCF_020740605.2/genome.fna.gz
+      annotation: /net/eichler/vol28/projects/nhp_rearrangements/nobackups/lemur_annotations/ncbi_downloads/GCF_020740605.2/annotation.gff.gz
+    ncbi_mmu:
+      genome: /net/eichler/vol28/projects/nhp_rearrangements/nobackups/lemur_annotations/ncbi_downloads/GCF_040939455.1/genome.fna.gz
+      annotation: /net/eichler/vol28/projects/nhp_rearrangements/nobackups/lemur_annotations/ncbi_downloads/GCF_040939455.1/annotation.gff.gz
+
+    # Lab assemblies (uncompressed)
+    lab_lct:
+      genome: /net/eichler/vol28/projects/nhp_rearrangements/nobackups/nhp_assemble/Onyx_LCT/parental_verkko/fasta_rag/new_Onyx_LCT_hap1.fasta
+    lab_mmu:
+      genome: /net/eichler/vol28/projects/nhp_rearrangements/nobackups/nhp_assemble/Inina_4.0/assembly_haphiC/fasta/Inina4_hap1.chr.fasta
+
+  # Comparisons: lift NCBI annotations to lab assemblies
+  comparisons:
+    - reference: ncbi_lct
+      targets:
+        - lab_lct
+    - reference: ncbi_mmu
+      targets:
+        - lab_mmu
+
+resources:
+  threads: 16
+  memory: "32G"

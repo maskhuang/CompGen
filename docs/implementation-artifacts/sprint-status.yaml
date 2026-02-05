@@ -74,10 +74,10 @@ development_status:
   epic-4-retrospective: optional
 
   # Epic 5: 缺失核验
-  epic-5: in-progress
+  epic-5: done
   5-1-liftoff-adapter: done
   5-2-true-vs-false-absence: done
-  5-3-lifted-annotation-file: backlog
+  5-3-lifted-annotation-file: done
   epic-5-retrospective: optional
 
   # Epic 6A: 存在/缺失矩阵（基础）

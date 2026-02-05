@@ -128,10 +128,10 @@ def run_liftoff_with_adapter():
     ref_fa_path = Path(snakemake.input.reference_fa)
     target_fa_path = Path(snakemake.input.target_fa)
 
-    lifted_gff_output = Path(snakemake.output.lifted_gff)
-    unmapped_output = Path(snakemake.output.unmapped)
-    stats_output = Path(snakemake.output.stats)
-    run_json_output = Path(snakemake.output.run_json)
+    lifted_gff_output = Path(snakemake.output.lifted_gff).resolve()
+    unmapped_output = Path(snakemake.output.unmapped).resolve()
+    stats_output = Path(snakemake.output.stats).resolve()
+    run_json_output = Path(snakemake.output.run_json).resolve()
 
     reference = snakemake.wildcards.reference
     target = snakemake.wildcards.target
@@ -164,9 +164,10 @@ def run_liftoff_with_adapter():
         version = adapter.check_version()
         print(f"Liftoff version: {version}")
 
-        # Step 2: Prepare working directory
+        # Step 2: Prepare working directory (use absolute paths)
+        out_dir = out_dir.resolve()
         out_dir.mkdir(parents=True, exist_ok=True)
-        intermediate_dir = out_dir / "intermediate"
+        intermediate_dir = (out_dir / "intermediate").resolve()
         intermediate_dir.mkdir(parents=True, exist_ok=True)
 
         with TemporaryDirectory(dir=out_dir) as temp_dir:
@@ -205,12 +206,22 @@ def run_liftoff_with_adapter():
             cmd = adapter.build_command(ctx)
             print(f"Executing: {' '.join(cmd)}")
 
+            # Set up environment with additional paths for minimap2
+            import os
+            env = os.environ.copy()
+            extra_paths = [
+                str(Path.home() / ".local" / "bin"),
+                str(Path.home() / "software" / "bin"),
+            ]
+            env["PATH"] = ":".join(extra_paths) + ":" + env.get("PATH", "")
+
             result = subprocess.run(
                 cmd,
                 cwd=out_dir,
                 capture_output=True,
                 text=True,
                 timeout=adapter.timeout_seconds(ctx),
+                env=env,
             )
 
             exit_code = result.returncode

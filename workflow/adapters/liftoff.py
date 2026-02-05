@@ -8,11 +8,50 @@ Source: Story 5.1 Liftoff Adapter, ADR-002 Tool Adaptation Layer
 """
 
 from pathlib import Path
+import os
 import re
+import shutil
 import subprocess
 
 from .base import BaseAdapter, ToolSpec, RunResult, AdapterContext, classify_common_errors
 from workflow.lib.errors import ErrorCode, CompGeneError
+
+
+def find_liftoff_binary() -> str:
+    """
+    Find the liftoff binary in common locations.
+
+    Searches in order:
+    1. User's ~/.local/bin (pip --user install)
+    2. User's ~/software/bin (custom install)
+    3. System PATH (shutil.which)
+
+    Returns:
+        Path to liftoff binary.
+
+    Raises:
+        CompGeneError: If liftoff cannot be found.
+    """
+    # Common installation locations
+    search_paths = [
+        Path.home() / ".local" / "bin" / "liftoff",
+        Path.home() / "software" / "bin" / "liftoff",
+    ]
+
+    for path in search_paths:
+        if path.exists() and os.access(path, os.X_OK):
+            return str(path)
+
+    # Fall back to PATH search
+    found = shutil.which("liftoff")
+    if found:
+        return found
+
+    raise CompGeneError(
+        ErrorCode.E_TOOL_NOT_FOUND,
+        "Liftoff not found. Ensure Liftoff is installed and in PATH.",
+        details=f"Searched: {[str(p) for p in search_paths]} and PATH",
+    )
 
 
 # =============================================================================
@@ -172,9 +211,12 @@ class LiftoffAdapter(BaseAdapter):
                           version cannot be detected.
             CompGeneError: E_TOOL_VERSION if version is not 1.6.x.
         """
+        # Find liftoff binary
+        liftoff_bin = find_liftoff_binary()
+
         try:
             result = subprocess.run(
-                ["liftoff", "--version"],
+                [liftoff_bin, "--version"],
                 capture_output=True,
                 text=True,
                 timeout=30,
@@ -191,12 +233,16 @@ class LiftoffAdapter(BaseAdapter):
             )
 
         # Parse version from stdout or stderr
-        # Liftoff outputs: "liftoff 1.6.3"
+        # Liftoff outputs various formats: "liftoff 1.6.3", "v1.6.3", "1.6.3"
         combined_output = result.stdout + result.stderr
         match = re.search(r'liftoff\s+(\d+\.\d+\.\d+)', combined_output, re.IGNORECASE)
 
         if not match:
-            # Try alternate format without "liftoff" prefix
+            # Try format with "v" prefix: "v1.6.3"
+            match = re.search(r'v(\d+\.\d+\.\d+)', combined_output.strip())
+
+        if not match:
+            # Try format without prefix: "1.6.3"
             match = re.search(r'^(\d+\.\d+\.\d+)', combined_output.strip())
 
         if not match:
@@ -285,8 +331,11 @@ class LiftoffAdapter(BaseAdapter):
         """
         liftoff_config = ctx.config.get("liftoff", {})
 
+        # Find liftoff binary
+        liftoff_bin = find_liftoff_binary()
+
         cmd = [
-            "liftoff",
+            liftoff_bin,
             "-g", str(ctx.inputs["reference_gff"]),
             "-o", str(ctx.outputs["lifted_gff"]),
             "-u", str(ctx.outputs["unmapped"]),
