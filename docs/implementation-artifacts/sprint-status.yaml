@@ -76,7 +76,7 @@ development_status:
   # Epic 5: 缺失核验
   epic-5: in-progress
   5-1-liftoff-adapter: done
-  5-2-true-vs-false-absence: backlog
+  5-2-true-vs-false-absence: done
   5-3-lifted-annotation-file: backlog
   epic-5-retrospective: optional
 

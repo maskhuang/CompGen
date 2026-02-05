@@ -1,13 +1,15 @@
 # Module: liftoff
 # Rules for annotation lifting using Liftoff
-# Implementation: Story 5.1
+# Implementation: Story 5.1, Story 5.2
 #
 # This module provides rules for lifting annotations from a reference
 # genome to target genomes using the Liftoff tool:
 #   results/liftoff/{reference}_to_{target}/
 #   ├── lifted_annotation.gff3      # Lifted annotation
 #   ├── unmapped_features.txt       # Unmapped features list
-#   └── liftoff_stats.tsv           # Mapping statistics
+#   ├── liftoff_stats.tsv           # Mapping statistics
+#   ├── gene_classification.tsv     # Gene classification results (Story 5.2)
+#   └── missing_genes.tsv           # Missing genes list (Story 5.2)
 
 
 # =============================================================================
@@ -49,6 +51,16 @@ def get_liftoff_targets():
         ref = comp["reference"]
         target = comp["target"]
         targets.append(f"results/liftoff/{ref}_to_{target}/lifted_annotation.gff3")
+    return targets
+
+
+def get_classification_targets():
+    """Get all classification output targets for Story 5.2."""
+    targets = []
+    for comp in get_liftoff_comparisons():
+        ref = comp["reference"]
+        target = comp["target"]
+        targets.append(f"results/liftoff/{ref}_to_{target}/gene_classification.tsv")
     return targets
 
 
@@ -158,3 +170,105 @@ rule liftoff_summary:
             writer.writeheader()
             if all_stats:
                 writer.writerows(all_stats)
+
+
+# =============================================================================
+# Gene Classification Rules (Story 5.2)
+# =============================================================================
+
+rule liftoff_classify:
+    """
+    Classify genes based on Liftoff mapping quality.
+
+    Analyzes Liftoff output to classify genes as:
+    - present: Successfully mapped with coverage >= threshold
+    - uncertain: Partially mapped (coverage < threshold but > 0)
+    - missing: Unmapped or zero coverage
+
+    Source: Story 5.2 - 映射质量分析与缺失检测
+    """
+    input:
+        lifted_gff="results/liftoff/{reference}_to_{target}/lifted_annotation.gff3",
+        unmapped="results/liftoff/{reference}_to_{target}/unmapped_features.txt",
+    output:
+        classification="results/liftoff/{reference}_to_{target}/gene_classification.tsv",
+        missing="results/liftoff/{reference}_to_{target}/missing_genes.tsv",
+        run_json="results/meta/liftoff_classify/reference={reference}_target={target}.run.json",
+    params:
+        min_coverage=lambda wildcards: config.get("liftoff", {}).get("min_coverage", 0.5),
+        min_identity=lambda wildcards: config.get("liftoff", {}).get("min_identity", 0.5),
+    threads: 1
+    log:
+        "logs/liftoff_classify/{reference}_to_{target}.log"
+    conda:
+        "../envs/liftoff.yaml"
+    script:
+        "../scripts/classify_absence.py"
+
+
+rule liftoff_classify_all:
+    """
+    Run classification for all Liftoff comparisons.
+
+    Triggers classification for all configured reference-target pairs.
+    """
+    input:
+        get_classification_targets()
+    output:
+        touch("results/liftoff/.classify_complete")
+
+
+rule liftoff_absence_summary:
+    """
+    Generate summary of absence detection across all comparisons.
+
+    Aggregates classification statistics from all comparisons into
+    a single summary table.
+
+    Source: Story 5.2 AC4 - 批量比较支持
+    """
+    input:
+        classifications=lambda wildcards: [
+            f"results/liftoff/{comp['reference']}_to_{comp['target']}/gene_classification.tsv"
+            for comp in get_liftoff_comparisons()
+        ]
+    output:
+        summary="results/liftoff/absence_summary.tsv"
+    run:
+        import csv
+        from pathlib import Path
+        from workflow.lib.absence_detection import read_classification_stats_from_tsv
+
+        # Summary fieldnames
+        ABSENCE_SUMMARY_FIELDS = [
+            "reference", "target", "total_genes", "present",
+            "uncertain", "missing", "present_rate", "missing_rate"
+        ]
+
+        all_summaries = []
+
+        for class_file in input.classifications:
+            class_path = Path(class_file)
+            if not class_path.exists():
+                continue
+
+            # Extract reference and target from path
+            # Format: results/liftoff/{reference}_to_{target}/gene_classification.tsv
+            dir_name = class_path.parent.name  # e.g., "human_to_mouse_lemur"
+            ref, target = dir_name.split("_to_", 1)
+
+            # Use shared function to read and calculate stats
+            stats = read_classification_stats_from_tsv(class_path)
+
+            all_summaries.append({
+                "reference": ref,
+                "target": target,
+                **stats,
+            })
+
+        # Write summary
+        with open(output.summary, 'w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=ABSENCE_SUMMARY_FIELDS, delimiter='\t')
+            writer.writeheader()
+            if all_summaries:
+                writer.writerows(all_summaries)
