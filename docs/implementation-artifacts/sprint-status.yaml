@@ -55,7 +55,7 @@ development_status:
   2-2-local-data-standardization: done
   2-2b-biopython-utils: done
   2-3-ncbi-annotation-download: done
-  2-4-busco-qc: review
+  2-4-busco-qc: done
   epic-2-retrospective: optional
 
   # Epic 3: 直系同源分析
@@ -74,8 +74,8 @@ development_status:
   epic-4-retrospective: optional
 
   # Epic 5: 缺失核验
-  epic-5: backlog
-  5-1-liftoff-adapter: backlog
+  epic-5: in-progress
+  5-1-liftoff-adapter: done
   5-2-true-vs-false-absence: backlog
   5-3-lifted-annotation-file: backlog
   epic-5-retrospective: optional

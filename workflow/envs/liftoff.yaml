@@ -1,5 +1,21 @@
+# CompGene Liftoff conda environment
+# Story 5.1 Liftoff Adapter
+#
+# Liftoff is a tool that accurately maps annotations from one genome
+# assembly to another using minimap2 for alignment.
+#
+# Supported versions: 1.6.x
+# Reference: https://github.com/agshumate/Liftoff
+
+name: compgene_liftoff
 channels:
   - conda-forge
   - bioconda
+  - defaults
 dependencies:
-  - liftoff
+  - liftoff>=1.6.0,<2.0.0
+  - python>=3.9
+  - minimap2>=2.24
+  - gffutils>=0.12
+  - numpy>=1.20
+  - biopython>=1.79

@@ -132,6 +132,60 @@ properties:
         maximum: 86400
         default: 1800
 
+  liftoff:
+    type: object
+    description: "Liftoff annotation lifting configuration (Story 5.1)"
+    additionalProperties: false
+    properties:
+      comparisons:
+        type: array
+        description: "List of annotation lifting comparisons"
+        items:
+          type: object
+          required:
+            - reference
+            - targets
+          additionalProperties: false
+          properties:
+            reference:
+              type: string
+              description: "Reference species name (must match a species in species list)"
+              minLength: 1
+            targets:
+              type: array
+              description: "Target species names for annotation lifting"
+              items:
+                type: string
+                minLength: 1
+              minItems: 1
+      min_coverage:
+        type: number
+        description: "Minimum sequence coverage threshold (0.0 to 1.0)"
+        minimum: 0.0
+        maximum: 1.0
+        default: 0.5
+      min_identity:
+        type: number
+        description: "Minimum sequence identity threshold (0.0 to 1.0)"
+        minimum: 0.0
+        maximum: 1.0
+        default: 0.5
+      copies:
+        type: boolean
+        description: "Allow multiple copies of genes to be mapped"
+        default: false
+      flank:
+        type: integer
+        description: "Flanking sequence length for alignment"
+        minimum: 0
+        default: 0
+      timeout:
+        type: integer
+        description: "Execution timeout in seconds"
+        minimum: 60
+        maximum: 86400
+        default: 3600
+
   resources:
     type: object
     description: "Compute resource limits"
