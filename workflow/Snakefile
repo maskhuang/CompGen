@@ -1,6 +1,6 @@
 from snakemake.utils import min_version, validate
 
-min_version("6.0")  # Temporarily lowered for testing
+min_version("9.0")
 
 configfile: "config/config.yaml"
 

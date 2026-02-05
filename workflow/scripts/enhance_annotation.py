@@ -131,9 +131,6 @@ def run_enhancement():
             } if exit_code == 0 else None,
             error_code=error_code_str,
             error_message=error_message,
-            extra_metadata={
-                "stats": stats if stats else None,
-            },
         )
 
         # Move audit file to expected location if different

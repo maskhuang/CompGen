@@ -124,9 +124,9 @@ def run_liftoff_with_adapter():
     start_time = time.time()
 
     # Get Snakemake variables
-    ref_gff_path = Path(snakemake.input.reference_gff)
-    ref_fa_path = Path(snakemake.input.reference_fa)
-    target_fa_path = Path(snakemake.input.target_fa)
+    ref_gff_path = Path(snakemake.input.reference_gff).resolve()
+    ref_fa_path = Path(snakemake.input.reference_fa).resolve()
+    target_fa_path = Path(snakemake.input.target_fa).resolve()
 
     lifted_gff_output = Path(snakemake.output.lifted_gff).resolve()
     unmapped_output = Path(snakemake.output.unmapped).resolve()

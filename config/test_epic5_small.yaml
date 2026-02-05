@@ -1,0 +1,31 @@
+# Epic 5 Small Dataset Test Configuration
+# Single chromosome NC_059154.1 (46 genes) for pipeline validation
+
+project:
+  name: "epic5_small"
+  output_dir: "./results"
+
+species:
+  - name: ncbi_lct
+  - name: lab_lct
+
+liftoff:
+  min_coverage: 0.50
+  min_identity: 0.50
+  include_uncertain: false
+
+  species_paths:
+    ncbi_lct:
+      genome: test_epic5/ref_genome.fa
+      annotation: test_epic5/ref_annotation.gff3
+    lab_lct:
+      genome: test_epic5/target_genome.fa
+
+  comparisons:
+    - reference: ncbi_lct
+      targets:
+        - lab_lct
+
+resources:
+  threads: 4
+  memory: "8G"
