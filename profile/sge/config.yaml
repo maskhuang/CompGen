@@ -1,0 +1,22 @@
+executor: cluster-generic
+cluster-generic-submit-cmd: >-
+  qsub
+  -q eichler-short.q
+  -pe serial {threads}
+  -l h_vmem=$(( {resources.mem_mb} / {threads} ))M
+  -l h_rt={resources.runtime}
+  -V
+  -cwd
+  -o logs/{rule}/{wildcards}.stdout
+  -e logs/{rule}/{wildcards}.stderr
+  -N {rule}_{wildcards}
+cluster-generic-status-cmd: "qstat -j {job_id} > /dev/null 2>&1 && echo running || echo finished"
+cluster-generic-cancel-cmd: "qdel {job_id}"
+jobs: 4
+latency-wait: 60
+use-envmodules: true
+software-deployment-method:
+  - env-modules
+default-resources:
+  mem_mb: 8192
+  runtime: "1h"

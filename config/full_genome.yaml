@@ -1,0 +1,41 @@
+# Full Genome Liftoff Configuration
+# LCT (Lemur catta) and MMU (Microcebus murinus)
+
+project:
+  name: "full_genome"
+  output_dir: "./results"
+
+species:
+  - name: ncbi_lct
+  - name: lab_lct
+  - name: ncbi_mmu
+  - name: lab_mmu
+
+liftoff:
+  min_coverage: 0.50
+  min_identity: 0.50
+  include_uncertain: false
+
+  species_paths:
+    ncbi_lct:
+      genome: results/liftoff/ncbi_lct_to_lab_lct/decompressed/genome.fa
+      annotation: results/liftoff/ncbi_lct_to_lab_lct/decompressed/annotation.gff3
+    lab_lct:
+      genome: /net/eichler/vol28/projects/nhp_rearrangements/nobackups/nhp_assemble/Onyx_LCT/parental_verkko/fasta_rag/new_Onyx_LCT_hap1.fasta
+    ncbi_mmu:
+      genome: results/liftoff/ncbi_mmu_to_lab_mmu/decompressed/genome.fa
+      annotation: results/liftoff/ncbi_mmu_to_lab_mmu/decompressed/annotation.gff3
+    lab_mmu:
+      genome: /net/eichler/vol28/projects/nhp_rearrangements/nobackups/nhp_assemble/Inina_4.0/assembly_haphiC/fasta/Inina4_hap1.chr.fasta
+
+  comparisons:
+    - reference: ncbi_lct
+      targets:
+        - lab_lct
+    - reference: ncbi_mmu
+      targets:
+        - lab_mmu
+
+resources:
+  threads: 16
+  memory: "64G"

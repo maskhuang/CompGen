@@ -154,8 +154,13 @@ rule liftoff_map:
         flank=lambda wildcards: config.get("liftoff", {}).get("flank", 0),
         out_dir="results/liftoff/{reference}_to_{target}",
     threads: workflow.cores if hasattr(workflow, 'cores') else 8
+    resources:
+        mem_mb=65536,
+        runtime="4h",
     log:
         "logs/liftoff_map/{reference}_to_{target}.log"
+    envmodules:
+        "minimap2/2.26",
     conda:
         "../envs/liftoff.yaml"
     script:

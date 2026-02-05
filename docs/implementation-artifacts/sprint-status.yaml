@@ -50,7 +50,7 @@ development_status:
   epic-1-retrospective: optional
 
   # Epic 2: 数据标准化与质控
-  epic-2: in-progress
+  epic-2: done
   2-1-gff-fasta-parser: done
   2-2-local-data-standardization: done
   2-2b-biopython-utils: done

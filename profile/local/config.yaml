@@ -1,0 +1,8 @@
+executor: local
+cores: 8
+use-envmodules: true
+software-deployment-method:
+  - env-modules
+default-resources:
+  mem_mb: 8192
+  runtime: "1h"

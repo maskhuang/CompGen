@@ -215,24 +215,36 @@ def run_liftoff_with_adapter():
             ]
             env["PATH"] = ":".join(extra_paths) + ":" + env.get("PATH", "")
 
-            result = subprocess.run(
-                cmd,
-                cwd=out_dir,
-                capture_output=True,
-                text=True,
-                timeout=adapter.timeout_seconds(ctx),
-                env=env,
-            )
+            # Write stdout/stderr to log files to avoid pipe buffer deadlocks
+            # on large genomes (Liftoff can produce >1M lines of stderr)
+            stdout_log = out_dir / "liftoff_stdout.log"
+            stderr_log = out_dir / "liftoff_stderr.log"
+
+            with open(stdout_log, "w") as f_out, open(stderr_log, "w") as f_err:
+                result = subprocess.run(
+                    cmd,
+                    cwd=out_dir,
+                    stdout=f_out,
+                    stderr=f_err,
+                    timeout=adapter.timeout_seconds(ctx),
+                    env=env,
+                )
 
             exit_code = result.returncode
-            print(f"Liftoff stdout:\n{result.stdout}")
-            if result.stderr:
-                print(f"Liftoff stderr:\n{result.stderr}")
+
+            # Read last portion of logs for reporting
+            stdout_text = stdout_log.read_text() if stdout_log.exists() else ""
+            stderr_text = stderr_log.read_text() if stderr_log.exists() else ""
+            # Only print last 2000 chars to avoid flooding
+            if stdout_text:
+                print(f"Liftoff stdout (last 2000 chars):\n{stdout_text[-2000:]}")
+            if stderr_text:
+                print(f"Liftoff stderr (last 2000 chars):\n{stderr_text[-2000:]}")
 
             if exit_code != 0:
                 # Step 5b: Classify error (AC5)
                 error_code, is_retryable = adapter.classify_error(
-                    ctx, exit_code, result.stderr
+                    ctx, exit_code, stderr_text
                 )
                 error_code_str = error_code.value
                 error_message = f"Liftoff failed with exit code {exit_code}"
@@ -240,7 +252,7 @@ def run_liftoff_with_adapter():
                 raise CompGeneError(
                     error_code,
                     error_message,
-                    details=result.stderr[:500] if result.stderr else None,
+                    details=stderr_text[:500] if stderr_text else None,
                 )
 
             # Step 6: Verify output files exist

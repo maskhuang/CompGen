@@ -315,3 +315,4 @@ N/A - No issues encountered during implementation
   - H1: Added gzip input test (`test_gzip_input_support`)
   - M3: Added special character test for source_gene (`test_special_characters_in_source_gene`)
   - Updated `test_percentage_coverage_normalization` to verify actual normalization
+- 2026-02-05: Bug fix - Removed unsupported `extra_metadata` kwarg from `create_and_write_audit()` in `enhance_annotation.py` (discovered during Snakemake pipeline end-to-end test)

@@ -487,8 +487,88 @@ N/A
 - `workflow/scripts/run_liftoff.py` - Fixed timeout handler, updated stats field names, improved decompression
 - `workflow/rules/liftoff.smk` - Fixed liftoff_summary rule to handle empty stats
 
+## Operational Notes (Post-Implementation)
+
+### Full Genome Execution Results
+
+| Species | Lifted Genes | Unmapped | Runtime | Cluster Node |
+|---------|-------------|----------|---------|-------------|
+| LCT (Lemur catta) | 26,602 | 90 | ~11 min | e003 (503GB RAM) |
+| MMU (Microcebus murinus) | 27,127 | 1,830 | ~18 min | e012 (503GB RAM) |
+
+Result files:
+- `/net/eichler/vol28/.../results/liftoff/ncbi_lct_to_lab_lct/lifted_annotation.gff3` (378 MB)
+- `/net/eichler/vol28/.../results/liftoff/ncbi_mmu_to_lab_mmu/lifted_annotation.gff3` (383 MB)
+
+### Bug Fixes Applied
+
+**1. Input path resolution (pipe buffer deadlock prevention)**
+- `run_liftoff.py`: Liftoff subprocess runs with `cwd=out_dir`, so relative input paths fail.
+  Fixed by adding `.resolve()` to all input paths.
+- `run_liftoff.py`: `capture_output=True` causes pipe buffer deadlock when Liftoff produces
+  >1M lines of stderr on full genomes. Fixed by redirecting stdout/stderr to log files.
+
+**2. enhance_annotation.py audit fix**
+- Removed unsupported `extra_metadata` kwarg from `create_and_write_audit()` call.
+
+### Cluster Execution Support (SGE)
+
+Full genome Liftoff requires >16GB RAM (gffutils builds 1.1GB sqlite database from 1.3M features).
+Local execution on 32GB machines results in OOM (SIGKILL -9).
+
+**Solution:** Submit to SGE cluster via Snakemake profile.
+
+Rule updates in `liftoff.smk`:
+```python
+rule liftoff_map:
+    ...
+    resources:
+        mem_mb=65536,
+        runtime="4h",
+    envmodules:
+        "minimap2/2.26",
+    ...
+```
+
+New files:
+- `profile/sge/config.yaml` — SGE cluster executor profile (qsub to eichler-short.q)
+- `profile/local/config.yaml` — Local execution profile
+
+Usage:
+```bash
+# Cluster execution (large genomes)
+module load python/3.13.10
+snakemake --profile profile/sge --configfile config/config.yaml <targets>
+
+# Local execution (small tests)
+snakemake --profile profile/local --configfile config/config.yaml <targets>
+```
+
+**SGE h_vmem gotcha:** With `-pe serial N`, `h_vmem` is per-slot. Requesting `h_vmem=64G`
+with 16 slots = 1TB total, causing jobs to stay queued forever. Use `h_vmem=4G` for 64G total.
+
+### Snakemake 9.x Upgrade
+
+- Requires Python >= 3.11 → use `module load python/3.13.10`
+- Installed `snakemake-executor-plugin-cluster-generic` for SGE support
+- `min_version("9.0")` in Snakefile
+
+### Known Issues with Large Genomes
+
+1. **gffutils OOM**: NCBI annotations have ~1.3M features including `biological_region` spanning
+   entire chromosomes. The gffutils sqlite database build is the OOM bottleneck (not minimap2).
+   See [Liftoff Issue #14](https://github.com/agshumate/Liftoff/issues/14).
+2. **Mitigation options**: Use `-f` to filter feature types, `-db` to reuse pre-built database,
+   or submit to large-memory cluster nodes (current solution).
+3. **minimap2 not in PATH on cluster nodes**: Must `module load minimap2/2.26` or use
+   `envmodules` directive in Snakemake rule.
+
 ## Change Log
 
 - 2026-02-05: Story file created
 - 2026-02-05: Implementation completed - all 6 tasks done
 - 2026-02-05: Code review completed - 8 issues fixed (4 HIGH, 4 MEDIUM)
+- 2026-02-05: Bug fixes - input path .resolve(), stdout/stderr to files, extra_metadata removal
+- 2026-02-05: Full genome Liftoff completed on SGE cluster (LCT: 26,602 genes, MMU: 27,127 genes)
+- 2026-02-05: Added cluster execution support (profile/sge/, resources, envmodules)
+- 2026-02-05: Snakemake upgraded to 9.16.3 with cluster-generic executor plugin
