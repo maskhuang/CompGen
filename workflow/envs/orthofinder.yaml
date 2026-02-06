@@ -1,5 +1,12 @@
+name: compgene_orthofinder
 channels:
   - conda-forge
   - bioconda
+  - defaults
 dependencies:
-  - orthofinder
+  - orthofinder>=2.5.0,<3.0.0
+  - python>=3.9
+  - diamond>=2.0
+  - mafft>=7.0
+  - fasttree>=2.1
+  - mcl>=14.137

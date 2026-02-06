@@ -375,6 +375,11 @@ compgene <command> [options] <config_file>
 |------|----------|------|
 | 注释检索 | `annotations/{species}.tsv` | TSV |
 | 直系同源推断 | `orthologs/ortholog_table.tsv` | TSV |
+| 缺失核验 | `liftoff/{ref}_to_{target}/lifted_annotation.gff3` | GFF3 |
+| 缺失核验 | `liftoff/{ref}_to_{target}/gene_classification.tsv` | TSV |
+| 缺失核验 | `liftoff/{ref}_to_{target}/missing_genes.tsv` | TSV |
+| 缺失核验 | `liftoff/{ref}_to_{target}/absence_summary.tsv` | TSV |
+| 缺失核验 | `liftoff/{ref}_to_{target}/lifted_annotation_enhanced.gff3` | GFF3 |
 | 基因存在/缺失 | `comparison/presence_absence_matrix.tsv` | TSV |
 | RNA-Seq 分析 | `expression/DE_results.tsv` | TSV（DESeq2 标准格式） |
 | RNA-Seq 分析 | `expression/normalized_counts.tsv` | TSV |
@@ -503,8 +508,8 @@ resources:
 
 - FR6: 系统可调用 OrthoFinder 执行 orthogroup 推断
 - FR7: 系统可生成 orthogroups 表（跨物种基因家族分组）
-- FR8: 系统可输出物种树和基因树
-- FR9: 系统可统计每物种的 orthogroup copy number
+- ~~FR8: 系统可输出物种树和基因树~~ → **Post-MVP**
+- ~~FR9: 系统可统计每物种的 orthogroup copy number~~ → **Post-MVP**
 - FR10: 系统可识别物种特异性 orthogroups
 
 ### 功能注释能力（eggNOG-mapper）
@@ -517,10 +522,10 @@ resources:
 
 ### 缺失核验能力（Liftoff）
 
-- FR16: 系统可调用 Liftoff 将参考注释映射到目标 assembly
-- FR17: 系统可识别"真缺失"vs"注释假缺失"候选
-- FR18: 系统可输出核验后的"真缺失候选清单"
-- FR19: 系统可生成注释补全后的对照注释文件
+- FR16: 系统可调用 Liftoff 将参考注释映射到目标 assembly，输出到 `results/liftoff/{reference}_to_{target}/`
+- FR17: 系统可基于 coverage/identity 阈值将基因三分类为：present（成功映射）、uncertain（部分映射，可能的假缺失）、missing（无法映射，真缺失候选）
+- FR18: 系统可输出 `gene_classification.tsv`（全基因分类）、`missing_genes.tsv`（缺失+不确定基因）和 `absence_summary.tsv`（跨比较汇总）
+- FR19: 系统可生成 `lifted_annotation_enhanced.gff3`，包含原始注释 + Liftoff 补全基因，附带 liftoff_coverage、liftoff_identity、liftoff_status、source_gene、reference_species 属性；原始注释优先于 Liftoff 结果
 
 ### 基因存在/缺失分析能力
 
