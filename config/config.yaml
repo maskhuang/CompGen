@@ -9,7 +9,7 @@
 # output_dir: Directory where all results will be written
 project:
   name: "compgene_analysis"
-  output_dir: "./results"
+  output_dir: "results"
 
 # Species List
 # ------------

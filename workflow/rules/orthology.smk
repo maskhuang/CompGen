@@ -16,7 +16,7 @@ from pathlib import Path
 # Helper Functions
 # =============================================================================
 
-def get_all_protein_files():
+def get_all_protein_files(wildcards=None):
     """Get protein sequence paths for all configured species."""
     return expand(
         "{output_dir}/standardized/{species}/proteins.longest.fa.gz",
