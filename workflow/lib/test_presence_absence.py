@@ -18,9 +18,14 @@ from pathlib import Path
 from workflow.lib.presence_absence import (
     build_presence_absence_matrix,
     build_copy_number_matrix,
+    classify_orthogroup_sharing,
     get_sorted_species,
     read_orthogroups_long_format,
+    read_presence_absence_matrix,
+    summarize_sharing_counts,
+    write_comparison_tsv,
     write_matrix_tsv,
+    write_summary_tsv,
 )
 from workflow.lib.errors import CompGeneError
 
@@ -387,3 +392,327 @@ class TestEndToEndIntegration:
         write_matrix_tsv(cn_matrix, species, cn_out)
         cn_lines = cn_out.read_text().strip().split("\n")
         assert cn_lines[1] == "OG0000000\t2\t1"  # species1 has 2 copies
+
+
+# =============================================================================
+# Tests: read_presence_absence_matrix (Story 6A.2)
+# =============================================================================
+
+class TestReadPresenceAbsenceMatrix:
+    def test_basic_read(self, tmp_path: Path):
+        """Read a valid PA matrix TSV."""
+        tsv = tmp_path / "pa.tsv"
+        tsv.write_text(
+            "orthogroup_id\tsp1\tsp2\tsp3\n"
+            "OG0000000\t1\t1\t1\n"
+            "OG0000001\t1\t0\t0\n"
+            "OG0000002\t0\t1\t1\n"
+        )
+        matrix, species = read_presence_absence_matrix(tsv)
+        assert species == ["sp1", "sp2", "sp3"]
+        assert len(matrix) == 3
+        assert matrix["OG0000000"] == {"sp1": 1, "sp2": 1, "sp3": 1}
+        assert matrix["OG0000001"] == {"sp1": 1, "sp2": 0, "sp3": 0}
+        assert matrix["OG0000002"] == {"sp1": 0, "sp2": 1, "sp3": 1}
+
+    def test_missing_file(self, tmp_path: Path):
+        """Missing file raises CompGeneError with E_INPUT_MISSING."""
+        with pytest.raises(CompGeneError) as exc_info:
+            read_presence_absence_matrix(tmp_path / "nonexistent.tsv")
+        assert exc_info.value.error_code.value == "E_INPUT_MISSING"
+
+    def test_bad_header(self, tmp_path: Path):
+        """Header missing orthogroup_id raises CompGeneError."""
+        tsv = tmp_path / "bad.tsv"
+        tsv.write_text("wrong_col\tsp1\n1\t1\n")
+        with pytest.raises(CompGeneError) as exc_info:
+            read_presence_absence_matrix(tsv)
+        assert exc_info.value.error_code.value == "E_INPUT_FORMAT"
+
+    def test_empty_matrix(self, tmp_path: Path):
+        """File with only header returns empty matrix."""
+        tsv = tmp_path / "pa.tsv"
+        tsv.write_text("orthogroup_id\tsp1\tsp2\n")
+        matrix, species = read_presence_absence_matrix(tsv)
+        assert matrix == {}
+        assert species == ["sp1", "sp2"]
+
+    def test_single_species(self, tmp_path: Path):
+        """Single-species matrix read correctly."""
+        tsv = tmp_path / "pa.tsv"
+        tsv.write_text(
+            "orthogroup_id\tspeciesA\n"
+            "OG0000000\t1\n"
+            "OG0000001\t1\n"
+        )
+        matrix, species = read_presence_absence_matrix(tsv)
+        assert species == ["speciesA"]
+        assert matrix["OG0000000"] == {"speciesA": 1}
+
+
+# =============================================================================
+# Tests: classify_orthogroup_sharing (Story 6A.2)
+# =============================================================================
+
+class TestClassifyOrthogroupSharing:
+    def test_all_three_categories(self):
+        """Matrix with all_shared, species_specific, and partial OGs."""
+        matrix = {
+            "OG0000000": {"sp1": 1, "sp2": 1, "sp3": 1},  # all_shared
+            "OG0000001": {"sp1": 1, "sp2": 1, "sp3": 0},  # partial
+            "OG0000002": {"sp1": 0, "sp2": 1, "sp3": 0},  # species_specific
+        }
+        species = ["sp1", "sp2", "sp3"]
+        result = classify_orthogroup_sharing(matrix, species)
+
+        assert len(result) == 3
+        by_og = {r["orthogroup_id"]: r for r in result}
+
+        assert by_og["OG0000000"]["category"] == "all_shared"
+        assert by_og["OG0000000"]["n_species_present"] == 3
+        assert by_og["OG0000000"]["present_species"] == "sp1,sp2,sp3"
+        assert by_og["OG0000000"]["absent_species"] == ""
+        assert by_og["OG0000000"]["specific_to"] == ""
+
+        assert by_og["OG0000001"]["category"] == "partial"
+        assert by_og["OG0000001"]["n_species_present"] == 2
+        assert by_og["OG0000001"]["present_species"] == "sp1,sp2"
+        assert by_og["OG0000001"]["absent_species"] == "sp3"
+
+        assert by_og["OG0000002"]["category"] == "species_specific"
+        assert by_og["OG0000002"]["n_species_present"] == 1
+        assert by_og["OG0000002"]["specific_to"] == "sp2"
+
+    def test_empty_matrix(self):
+        """Empty matrix returns empty classifications."""
+        result = classify_orthogroup_sharing({}, ["sp1", "sp2"])
+        assert result == []
+
+    def test_all_shared_only(self):
+        """All orthogroups shared by all species."""
+        matrix = {
+            "OG0": {"sp1": 1, "sp2": 1},
+            "OG1": {"sp1": 1, "sp2": 1},
+        }
+        result = classify_orthogroup_sharing(matrix, ["sp1", "sp2"])
+        assert all(r["category"] == "all_shared" for r in result)
+
+    def test_single_species_all_specific(self):
+        """Single-species matrix: all OGs are species_specific."""
+        matrix = {
+            "OG0": {"sp1": 1},
+            "OG1": {"sp1": 1},
+        }
+        result = classify_orthogroup_sharing(matrix, ["sp1"])
+        assert all(r["category"] == "species_specific" for r in result)
+        assert all(r["specific_to"] == "sp1" for r in result)
+
+    def test_sorted_by_orthogroup_id(self):
+        """Results are sorted by orthogroup_id."""
+        matrix = {
+            "OG0000002": {"sp1": 1, "sp2": 0},
+            "OG0000000": {"sp1": 1, "sp2": 1},
+            "OG0000001": {"sp1": 0, "sp2": 1},
+        }
+        result = classify_orthogroup_sharing(matrix, ["sp1", "sp2"])
+        og_ids = [r["orthogroup_id"] for r in result]
+        assert og_ids == ["OG0000000", "OG0000001", "OG0000002"]
+
+    def test_two_species_no_partial(self):
+        """With 2 species, partial requires exactly 2 present (== all_shared)."""
+        matrix = {
+            "OG0": {"sp1": 1, "sp2": 1},  # all_shared (2/2)
+            "OG1": {"sp1": 1, "sp2": 0},  # species_specific (1/2)
+            "OG2": {"sp1": 0, "sp2": 1},  # species_specific (1/2)
+        }
+        result = classify_orthogroup_sharing(matrix, ["sp1", "sp2"])
+        by_og = {r["orthogroup_id"]: r for r in result}
+        assert by_og["OG0"]["category"] == "all_shared"
+        assert by_og["OG1"]["category"] == "species_specific"
+        assert by_og["OG2"]["category"] == "species_specific"
+
+
+# =============================================================================
+# Tests: summarize_sharing_counts (Story 6A.2)
+# =============================================================================
+
+class TestSummarizeSharingCounts:
+    def test_basic_summary(self):
+        """Summary counts match classification categories."""
+        classifications = [
+            {"orthogroup_id": "OG0", "category": "all_shared", "specific_to": ""},
+            {"orthogroup_id": "OG1", "category": "partial", "specific_to": ""},
+            {"orthogroup_id": "OG2", "category": "species_specific", "specific_to": "sp1"},
+            {"orthogroup_id": "OG3", "category": "species_specific", "specific_to": "sp2"},
+            {"orthogroup_id": "OG4", "category": "species_specific", "specific_to": "sp1"},
+        ]
+        species = ["sp1", "sp2", "sp3"]
+        result = summarize_sharing_counts(classifications, species)
+
+        by_metric = {r["metric"]: r["count"] for r in result}
+        assert by_metric["total_orthogroups"] == 5
+        assert by_metric["all_shared"] == 1
+        assert by_metric["partial_shared"] == 1
+        assert by_metric["species_specific_total"] == 3
+        assert by_metric["species_specific_sp1"] == 2
+        assert by_metric["species_specific_sp2"] == 1
+        assert by_metric["species_specific_sp3"] == 0
+
+    def test_empty_classifications(self):
+        """Empty classifications produce zero counts."""
+        result = summarize_sharing_counts([], ["sp1", "sp2"])
+        by_metric = {r["metric"]: r["count"] for r in result}
+        assert by_metric["total_orthogroups"] == 0
+        assert by_metric["all_shared"] == 0
+        assert by_metric["partial_shared"] == 0
+        assert by_metric["species_specific_total"] == 0
+
+    def test_per_species_order(self):
+        """Per-species rows follow species_list order."""
+        result = summarize_sharing_counts([], ["zebra", "alpha", "mouse"])
+        per_species_metrics = [
+            r["metric"] for r in result
+            if r["metric"].startswith("species_specific_") and r["metric"] != "species_specific_total"
+        ]
+        assert per_species_metrics == [
+            "species_specific_zebra",
+            "species_specific_alpha",
+            "species_specific_mouse",
+        ]
+
+
+# =============================================================================
+# Tests: write_comparison_tsv / write_summary_tsv (Story 6A.2)
+# =============================================================================
+
+class TestWriteComparisonTsv:
+    def test_basic_write(self, tmp_path: Path):
+        """Write classification results to TSV."""
+        classifications = [
+            {
+                "orthogroup_id": "OG0",
+                "category": "all_shared",
+                "n_species_present": 3,
+                "present_species": "sp1,sp2,sp3",
+                "absent_species": "",
+                "specific_to": "",
+            },
+            {
+                "orthogroup_id": "OG1",
+                "category": "species_specific",
+                "n_species_present": 1,
+                "present_species": "sp2",
+                "absent_species": "sp1,sp3",
+                "specific_to": "sp2",
+            },
+        ]
+        output = tmp_path / "comparison.tsv"
+        write_comparison_tsv(classifications, output)
+        assert output.exists()
+        lines = output.read_text().strip().split("\n")
+        assert len(lines) == 3  # header + 2 rows
+        header = lines[0].split("\t")
+        assert header == [
+            "orthogroup_id", "category", "n_species_present",
+            "present_species", "absent_species", "specific_to",
+        ]
+        row0 = lines[1].split("\t")
+        assert row0[0] == "OG0"
+        assert row0[1] == "all_shared"
+
+    def test_atomic_write(self, tmp_path: Path):
+        """No .tmp file remains after write."""
+        output = tmp_path / "comparison.tsv"
+        write_comparison_tsv([], output)
+        assert not output.with_suffix(".tsv.tmp").exists()
+        assert output.exists()
+
+    def test_creates_parent_dirs(self, tmp_path: Path):
+        """Parent directories are created."""
+        output = tmp_path / "sub" / "dir" / "comparison.tsv"
+        write_comparison_tsv([], output)
+        assert output.exists()
+
+
+class TestWriteSummaryTsv:
+    def test_basic_write(self, tmp_path: Path):
+        """Write summary rows to TSV."""
+        rows = [
+            {"metric": "total_orthogroups", "count": 5},
+            {"metric": "all_shared", "count": 2},
+        ]
+        output = tmp_path / "summary.tsv"
+        write_summary_tsv(rows, output)
+        assert output.exists()
+        lines = output.read_text().strip().split("\n")
+        assert len(lines) == 3
+        assert lines[0] == "metric\tcount"
+        assert lines[1] == "total_orthogroups\t5"
+        assert lines[2] == "all_shared\t2"
+
+    def test_atomic_write(self, tmp_path: Path):
+        """No .tmp file remains after write."""
+        output = tmp_path / "summary.tsv"
+        write_summary_tsv([], output)
+        assert not output.with_suffix(".tsv.tmp").exists()
+
+
+# =============================================================================
+# Tests: End-to-end Story 6A.2 Integration
+# =============================================================================
+
+class TestComparisonEndToEnd:
+    def test_full_pipeline(self, tmp_path: Path):
+        """Read PA matrix → classify → summarize → write → verify."""
+        # Write input PA matrix
+        pa_tsv = tmp_path / "presence_absence.tsv"
+        pa_tsv.write_text(
+            "orthogroup_id\tspecies1\tspecies2\tspecies3\n"
+            "OG0000000\t1\t1\t1\n"   # all_shared
+            "OG0000001\t1\t1\t0\n"   # partial
+            "OG0000002\t0\t1\t0\n"   # species_specific (species2)
+            "OG0000003\t1\t0\t0\n"   # species_specific (species1)
+            "OG0000004\t0\t1\t1\n"   # partial
+        )
+
+        # Read PA matrix
+        matrix, species = read_presence_absence_matrix(pa_tsv)
+        assert len(matrix) == 5
+        assert species == ["species1", "species2", "species3"]
+
+        # Classify
+        classifications = classify_orthogroup_sharing(matrix, species)
+        assert len(classifications) == 5
+        by_og = {c["orthogroup_id"]: c for c in classifications}
+        assert by_og["OG0000000"]["category"] == "all_shared"
+        assert by_og["OG0000001"]["category"] == "partial"
+        assert by_og["OG0000002"]["category"] == "species_specific"
+        assert by_og["OG0000002"]["specific_to"] == "species2"
+        assert by_og["OG0000003"]["category"] == "species_specific"
+        assert by_og["OG0000003"]["specific_to"] == "species1"
+        assert by_og["OG0000004"]["category"] == "partial"
+
+        # Summarize
+        summary = summarize_sharing_counts(classifications, species)
+        by_metric = {r["metric"]: r["count"] for r in summary}
+        assert by_metric["total_orthogroups"] == 5
+        assert by_metric["all_shared"] == 1
+        assert by_metric["partial_shared"] == 2
+        assert by_metric["species_specific_total"] == 2
+        assert by_metric["species_specific_species1"] == 1
+        assert by_metric["species_specific_species2"] == 1
+        assert by_metric["species_specific_species3"] == 0
+
+        # Write and verify comparison
+        comp_out = tmp_path / "comparison.tsv"
+        write_comparison_tsv(classifications, comp_out)
+        comp_lines = comp_out.read_text().strip().split("\n")
+        assert len(comp_lines) == 6  # header + 5 OGs
+        assert comp_lines[0].startswith("orthogroup_id\t")
+
+        # Write and verify summary
+        sum_out = tmp_path / "summary.tsv"
+        write_summary_tsv(summary, sum_out)
+        sum_lines = sum_out.read_text().strip().split("\n")
+        assert sum_lines[0] == "metric\tcount"
+        assert "total_orthogroups\t5" in sum_lines[1]

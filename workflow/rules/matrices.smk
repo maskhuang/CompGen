@@ -36,3 +36,35 @@ rule matrices_generate:
         "logs/matrices_generate/run.log",
     script:
         "../scripts/build_matrices.py"
+
+
+# =============================================================================
+# Multi-Species Comparison Rules
+# =============================================================================
+
+rule matrices_compare:
+    """
+    Compare multi-species presence/absence patterns.
+
+    Reads the presence/absence matrix and classifies each orthogroup by
+    sharing pattern:
+    - all_shared: present in all species
+    - species_specific: present in exactly one species
+    - partial: present in some but not all species
+
+    Story 6A.2: FR21
+    AC1: Orthogroup sharing classification
+    AC2: Summary statistics
+    AC4: Audit record
+    """
+    input:
+        presence_absence="results/matrices/presence_absence.tsv",
+    output:
+        comparison="results/matrices/comparison.tsv",
+        summary="results/matrices/comparison_summary.tsv",
+        run_json="results/meta/matrices_compare/run.run.json",
+    threads: 1
+    log:
+        "logs/matrices_compare/run.log",
+    script:
+        "../scripts/build_comparison.py"
